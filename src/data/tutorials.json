@@ -28,7 +28,7 @@
   },
   {
     "id": "ps5-mast1c0re",
-    "name": "Mast1c0re PS4 Emulator Exploit",
+    "name": "Mast1c0re PS5 Emulator Exploit",
     "minFirmware": 4.52,
     "maxFirmware": 7.61,
     "ps5Model": "both",
@@ -54,7 +54,7 @@
   },
   {
     "id": "ps5-no-jailbreak",
-    "name": "No Public Jailbreak Available (Stay & Block Updates)",
+    "name": "No Public PS5 Jailbreak Available (Stay & Block Updates)",
     "minFirmware": 7.62,
     "maxFirmware": 12.00,
     "ps5Model": "both",
@@ -72,6 +72,85 @@
       "Turn off 'Download Update Files Automatically' and 'Install Update Files Automatically'.",
       "To completely prevent accidental updates, consider setting up a custom DNS (e.g., Al Azif's DNS) to block Sony servers entirely.",
       "Wait patiently. Modern exploit chains require time, and hackers are actively researching newer firmwares. Your current firmware is your best chance for a future hack!"
+    ]
+  },
+  {
+    "id": "ps4-goldhen-900",
+    "name": "PS4 GoldHEN Kernel Exploit (9.00)",
+    "minFirmware": 1.00,
+    "maxFirmware": 9.00,
+    "ps5Model": "all",
+    "status": "Stable",
+    "difficulty": "Easy",
+    "youtubeId": "zG6302wR60g",
+    "description": "The gold-standard jailbreak for PS4 firmware 9.00 or lower. It uses a Webkit exploit paired with a special exFAT USB flash drive containing the exfathax payload to execute a kernel exploit, enabling GoldHEN for homebrew, backups, cheats, and plugins.",
+    "requirements": [
+      "A PS4 running firmware 9.00 or lower (if lower, you can update to exactly 9.00 via offline USB update)",
+      "A spare USB flash drive (any size) to write the 'exfathax' image to",
+      "A PC or phone to access the host page and write the USB image",
+      "Win32DiskImager, Rufus, or BalenaEtcher to burn the image"
+    ],
+    "steps": [
+      "Download the PS4 update file for firmware 9.00 (reinstallation/recovery file) and update your console offline via USB if your current firmware is below 9.00.",
+      "On your PC, download the 'exfathax.img' file and use BalenaEtcher or Rufus to write it to your spare USB flash drive. Do not format or open the USB after writing.",
+      "On your PS4, go to Settings > Network > Set Up Internet Connection. Change DNS to Manual and set Primary DNS to '192.241.116.141' or '165.227.83.145' to block updates and load the exploit host.",
+      "Open the PS4 Web Browser or go to Settings > User's Guide. Access a stable host (e.g., Karo Host or Al Azif's page).",
+      "Click on 'GoldHEN v2.3' (or latest version) for 9.00.",
+      "A prompt will appear: 'Insert USB now. Do not close this dialog until notification appears.'",
+      "Insert your exfathax USB drive into any USB port of the PS4. Wait for the system notification 'Unsupported File System' to appear in the top left.",
+      "Click 'OK' on the browser prompt. The exploit will run, inject GoldHEN, and display 'GoldHEN loaded!'. You can now safely remove the USB drive.",
+      "Go to PS4 Settings > GoldHEN to configure homebrew package installer, FTP server, temperature controls, and game cheats!"
+    ]
+  },
+  {
+    "id": "ps4-pppwn-1100",
+    "name": "PS4 PPPwn LAN Exploit (9.01 - 11.00)",
+    "minFirmware": 9.01,
+    "maxFirmware": 11.00,
+    "ps5Model": "all",
+    "status": "Stable",
+    "difficulty": "Hard",
+    "youtubeId": "2L8U41jT30A",
+    "description": "An advanced, stable kernel exploit for PS4 systems on firmware 9.01 up to 11.00. It utilizes a PPPoE network protocol exploit (PPPwn) triggered via an Ethernet cable connected to a PC, Raspberry Pi, or a smart router to load GoldHEN.",
+    "requirements": [
+      "A PS4 running firmware between 9.01 and 11.00 (recommended to update to exactly 11.00 via offline USB)",
+      "An Ethernet/LAN cable connecting your PS4 directly to your PC, Raspberry Pi, or compatible router",
+      "A PC running Windows/macOS/Linux or a Raspberry Pi to execute the exploit trigger script",
+      "The latest PPPwn executable (e.g. PPPwn GUI or pppwn-cpp wrapper) and the GoldHEN stage2.bin payload"
+    ],
+    "steps": [
+      "Prepare your PC by downloading a PPPwn GUI tool (like PPPwn Go or PPPwn C++) and select your target firmware version (e.g. 11.00).",
+      "Copy the matching 'stage2.bin' payload for your firmware onto an exFAT or FAT32 USB drive and plug it into your PS4 console.",
+      "Connect the Ethernet cable from your PC's network card directly to the LAN port on your PS4.",
+      "On your PS4, go to Settings > Network > Set Up Internet Connection. Select 'Use a LAN Cable', choose 'Custom', and select 'PPPoE' for IP Address Settings.",
+      "Enter any dummy text for PPPoE User ID and Password (e.g., 'ppp' for both). Leave DNS, MTU, and Proxy as Automatic.",
+      "Do NOT run the connection test yet. On your PC, open the PPPwn tool, select the correct network interface card (Ethernet) and click 'Start Exploit'.",
+      "On your PS4, click 'Test Internet Connection' to trigger the PPPoE request. The PPPwn script on your PC will intercept the connection and run the exploit phases.",
+      "Watch the PC terminal output. Once it completes, your PS4 screen will display 'GoldHEN loaded!' in the top-left notification.",
+      "Access the newly unlocked 'GoldHEN' menu at the top of your PS4 Settings screen to install packages and load custom homebrew!"
+    ]
+  },
+  {
+    "id": "ps4-no-jailbreak",
+    "name": "No PS4 Jailbreak Available (Stay on <= 11.00)",
+    "minFirmware": 11.01,
+    "maxFirmware": 12.00,
+    "ps5Model": "all",
+    "status": "No Jailbreak",
+    "difficulty": "None",
+    "youtubeId": "8zD6H5K7P-Q",
+    "description": "There is currently no public kernel exploit or jailbreak for PlayStation 4 consoles on firmware 11.01, 11.02, 11.50, or higher. To ensure your best chance at a future jailbreak, keep your console completely offline and do not update.",
+    "requirements": [
+      "A PS4 on firmware 11.01 or above",
+      "A commitment to never update your console under any circumstances",
+      "Automatic software downloads and updates disabled"
+    ],
+    "steps": [
+      "Go to PS4 Settings > System > Automatic Downloads.",
+      "Uncheck 'System Software Update Files' and 'Install Automatically' to ensure the console never updates silently.",
+      "Do NOT sign in to PlayStation Network (PSN) or update any games that require a higher system version.",
+      "Consider using a custom DNS to block connection to Sony's official update servers entirely.",
+      "Keep the console on your current firmware. Developers are always searching for new user-mode and kernel vulnerabilities. Patience is key!"
     ]
   }
 ]

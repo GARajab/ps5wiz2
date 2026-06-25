@@ -1,4 +1,4 @@
-export type PS5ModelType = 'digital' | 'disk' | 'both';
+export type PS5ModelType = 'digital' | 'disk' | 'both' | 'fat' | 'slim' | 'pro' | 'all';
 
 export interface Tutorial {
   id: string;

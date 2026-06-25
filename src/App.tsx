@@ -37,10 +37,15 @@ import {
 } from './lib/supabase';
 import { useToast } from './components/Toast';
 
+// Premium High-Quality Console Images
+import ps4ConsoleImg from './assets/images/ps4_console_1782379424211.jpg';
+import ps5ConsoleImg from './assets/images/ps5_console_1782379438626.jpg';
+
 export default function App() {
   const toast = useToast();
 
   // Wizard States
+  const [consoleGen, setConsoleGen] = useState<'ps4' | 'ps5' | null>(null);
   const [model, setModel] = useState<PS5ModelType | null>(null);
   const [firmwareInput, setFirmwareInput] = useState<string>("4.03");
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -148,7 +153,7 @@ export default function App() {
         },
         {
           id: "ps5-mast1c0re",
-          name: "Mast1c0re PS4 Emulator Exploit",
+          name: "Mast1c0re PS5 Emulator Exploit",
           minFirmware: 4.52,
           maxFirmware: 7.61,
           ps5Model: "both",
@@ -174,7 +179,7 @@ export default function App() {
         },
         {
           id: "ps5-no-jailbreak",
-          name: "No Public Jailbreak Available (Stay & Block Updates)",
+          name: "No Public PS5 Jailbreak Available (Stay & Block Updates)",
           minFirmware: 7.62,
           maxFirmware: 12.00,
           ps5Model: "both",
@@ -192,6 +197,85 @@ export default function App() {
             "Turn off 'Download Update Files Automatically' and 'Install Update Files Automatically'.",
             "To completely prevent accidental updates, consider setting up a custom DNS (e.g., Al Azif's DNS) to block Sony servers entirely.",
             "Wait patiently. Modern exploit chains require time, and hackers are actively researching newer firmwares. Your current firmware is your best chance for a future hack!"
+          ]
+        },
+        {
+          id: "ps4-goldhen-900",
+          name: "PS4 GoldHEN Kernel Exploit (9.00)",
+          minFirmware: 1.00,
+          maxFirmware: 9.00,
+          ps5Model: "all",
+          status: "Stable",
+          difficulty: "Easy",
+          youtubeId: "zG6302wR60g",
+          description: "The gold-standard jailbreak for PS4 firmware 9.00 or lower. It uses a Webkit exploit paired with a special exFAT USB flash drive containing the exfathax payload to execute a kernel exploit, enabling GoldHEN for homebrew, backups, cheats, and plugins.",
+          requirements: [
+            "A PS4 running firmware 9.00 or lower (if lower, you can update to exactly 9.00 via offline USB update)",
+            "A spare USB flash drive (any size) to write the 'exfathax' image to",
+            "A PC or phone to access the host page and write the USB image",
+            "Win32DiskImager, Rufus, or BalenaEtcher to burn the image"
+          ],
+          steps: [
+            "Download the PS4 update file for firmware 9.00 (reinstallation/recovery file) and update your console offline via USB if your current firmware is below 9.00.",
+            "On your PC, download the 'exfathax.img' file and use BalenaEtcher or Rufus to write it to your spare USB flash drive. Do not format or open the USB after writing.",
+            "On your PS4, go to Settings > Network > Set Up Internet Connection. Change DNS to Manual and set Primary DNS to '192.241.116.141' or '165.227.83.145' to block updates and load the exploit host.",
+            "Open the PS4 Web Browser or go to Settings > User's Guide. Access a stable host (e.g., Karo Host or Al Azif's page).",
+            "Click on 'GoldHEN v2.3' (or latest version) for 9.00.",
+            "A prompt will appear: 'Insert USB now. Do not close this dialog until notification appears.'",
+            "Insert your exfathax USB drive into any USB port of the PS4. Wait for the system notification 'Unsupported File System' to appear in the top left.",
+            "Click 'OK' on the browser prompt. The exploit will run, inject GoldHEN, and display 'GoldHEN loaded!'. You can now safely remove the USB drive.",
+            "Go to PS4 Settings > GoldHEN to configure homebrew package installer, FTP server, temperature controls, and game cheats!"
+          ]
+        },
+        {
+          id: "ps4-pppwn-1100",
+          name: "PS4 PPPwn LAN Exploit (9.01 - 11.00)",
+          minFirmware: 9.01,
+          maxFirmware: 11.00,
+          ps5Model: "all",
+          status: "Stable",
+          difficulty: "Hard",
+          youtubeId: "2L8U41jT30A",
+          description: "An advanced, stable kernel exploit for PS4 systems on firmware 9.01 up to 11.00. It utilizes a PPPoE network protocol exploit (PPPwn) triggered via an Ethernet cable connected to a PC, Raspberry Pi, or a smart router to load GoldHEN.",
+          requirements: [
+            "A PS4 running firmware between 9.01 and 11.00 (recommended to update to exactly 11.00 via offline USB)",
+            "An Ethernet/LAN cable connecting your PS4 directly to your PC, Raspberry Pi, or compatible router",
+            "A PC running Windows/macOS/Linux or a Raspberry Pi to execute the exploit trigger script",
+            "The latest PPPwn executable (e.g. PPPwn GUI or pppwn-cpp wrapper) and the GoldHEN stage2.bin payload"
+          ],
+          steps: [
+            "Prepare your PC by downloading a PPPwn GUI tool (like PPPwn Go or PPPwn C++) and select your target firmware version (e.g. 11.00).",
+            "Copy the matching 'stage2.bin' payload for your firmware onto an exFAT or FAT32 USB drive and plug it into your PS4 console.",
+            "Connect the Ethernet cable from your PC's network card directly to the LAN port on your PS4.",
+            "On your PS4, go to Settings > Network > Set Up Internet Connection. Select 'Use a LAN Cable', choose 'Custom', and select 'PPPoE' for IP Address Settings.",
+            "Enter any dummy text for PPPoE User ID and Password (e.g., 'ppp' for both). Leave DNS, MTU, and Proxy as Automatic.",
+            "Do NOT run the connection test yet. On your PC, open the PPPwn tool, select the correct network interface card (Ethernet) and click 'Start Exploit'.",
+            "On your PS4, click 'Test Internet Connection' to trigger the PPPoE request. The PPPwn script on your PC will intercept the connection and run the exploit phases.",
+            "Watch the PC terminal output. Once it completes, your PS4 screen will display 'GoldHEN loaded!' in the top-left notification.",
+            "Access the newly unlocked 'GoldHEN' menu at the top of your PS4 Settings screen to install packages and load custom homebrew!"
+          ]
+        },
+        {
+          id: "ps4-no-jailbreak",
+          name: "No PS4 Jailbreak Available (Stay on <= 11.00)",
+          minFirmware: 11.01,
+          maxFirmware: 12.00,
+          ps5Model: "all",
+          status: "No Jailbreak",
+          difficulty: "None",
+          youtubeId: "8zD6H5K7P-Q",
+          description: "There is currently no public kernel exploit or jailbreak for PlayStation 4 consoles on firmware 11.01, 11.02, 11.50, or higher. To ensure your best chance at a future jailbreak, keep your console completely offline and do not update.",
+          requirements: [
+            "A PS4 on firmware 11.01 or above",
+            "A commitment to never update your console under any circumstances",
+            "Automatic software downloads and updates disabled"
+          ],
+          steps: [
+            "Go to PS4 Settings > System > Automatic Downloads.",
+            "Uncheck 'System Software Update Files' and 'Install Automatically' to ensure the console never updates silently.",
+            "Do NOT sign in to PlayStation Network (PSN) or update any games that require a higher system version.",
+            "Consider using a custom DNS to block connection to Sony's official update servers entirely.",
+            "Keep the console on your current firmware. Developers are always searching for new user-mode and kernel vulnerabilities. Patience is key!"
           ]
         }
       ];
@@ -216,13 +300,27 @@ export default function App() {
 
   // Find appropriate tutorial based on wizard choices
   const getMatchedTutorial = (): Tutorial | null => {
-    if (!model) return null;
+    if (!consoleGen) return null;
+    if (consoleGen === 'ps5' && !model) return null;
+
     const firmwareNum = parseFloat(firmwareInput);
     if (isNaN(firmwareNum)) return null;
 
     // Filter tutorials matching criteria
     const matched = tutorials.find(t => {
-      const isModelCompatible = t.ps5Model === 'both' || t.ps5Model === model;
+      const isPs4Tutorial = t.id.startsWith('ps4-');
+      const isPs5Tutorial = !isPs4Tutorial;
+
+      if (consoleGen === 'ps4' && !isPs4Tutorial) return false;
+      if (consoleGen === 'ps5' && !isPs5Tutorial) return false;
+
+      let isModelCompatible = true;
+      if (consoleGen === 'ps5') {
+        isModelCompatible = t.ps5Model === 'both' || t.ps5Model === model;
+      } else if (consoleGen === 'ps4') {
+        isModelCompatible = t.ps5Model === 'all' || t.ps5Model === 'both' || t.ps5Model === model || model === 'all';
+      }
+
       const isFirmwareCompatible = firmwareNum >= t.minFirmware && firmwareNum <= t.maxFirmware;
       return isModelCompatible && isFirmwareCompatible;
     });
@@ -234,6 +332,7 @@ export default function App() {
 
   // Handle Wizard Reset
   const handleReset = () => {
+    setConsoleGen(null);
     setModel(null);
     setFirmwareInput("4.03");
     setCurrentStep(1);
@@ -242,17 +341,18 @@ export default function App() {
   };
 
   // Quick Firmware Presets
-  const firmwarePresets = [
+  const firmwarePresets = consoleGen === 'ps4' ? [
+    { value: "5.05", label: "v5.05 (Stable)", type: "low" },
+    { value: "6.72", label: "v6.72 (Stable)", type: "low" },
+    { value: "9.00", label: "v9.00 (Recommended)", type: "low" },
+    { value: "11.00", label: "v11.00 (PPPwn)", type: "low" },
+    { value: "11.50", label: "v11.50 (No JB)", type: "high" }
+  ] : [
     { value: "2.00", label: "v2.00 (UMTX)", type: "low" },
     { value: "3.00", label: "v3.00 (UMTX)", type: "low" },
     { value: "4.03", label: "v4.03 (Recommended)", type: "low" },
     { value: "4.50", label: "v4.50 (UMTX)", type: "low" },
-    { value: "4.51", label: "v4.51 (UMTX Limit)", type: "low" },
-    { value: "5.00", label: "v5.00 (Mast1c0re)", type: "med" },
-    { value: "7.00", label: "v7.00 (Mast1c0re)", type: "med" },
-    { value: "7.61", label: "v7.61 (Mast1c0re Max)", type: "med" },
-    { value: "8.20", label: "v8.20 (No Jailbreak)", type: "high" },
-    { value: "11.00", label: "v11.00 (No Jailbreak)", type: "high" }
+    { value: "4.51", label: "v4.51 (UMTX Limit)", type: "low" }
   ];
 
   // Admin Authentication (Simple password setup: 'Rajab@1954' for edit flow)
@@ -927,17 +1027,17 @@ export default function App() {
                 Firmware Companion Pro
               </span>
               <h2 className="text-3xl md:text-4xl font-display font-extrabold tracking-tight text-slate-900">
-                Find Your PS5 Jailbreak Method
+                Find Your PS4 & PS5 Jailbreak Method
               </h2>
               <p className="text-sm text-slate-500 max-w-lg mx-auto mt-2 leading-relaxed">
-                Choose your hardware model, input your system firmware version, and retrieve a customized, interactive step-by-step hack guide instantly.
+                Choose your hardware generation, select your console model, input your system firmware version, and retrieve your custom step-by-step hack guide.
               </p>
             </div>
 
             {/* Steps Visual Indicator */}
             <div className="flex items-center justify-center space-x-3 mb-10 max-w-md mx-auto">
               <div 
-                onClick={() => model && setCurrentStep(1)}
+                onClick={() => consoleGen && setCurrentStep(1)}
                 className={`flex items-center space-x-1.5 cursor-pointer text-xs font-mono transition-all ${
                   currentStep >= 1 ? "text-indigo-600 font-bold" : "text-slate-400"
                 }`}
@@ -949,7 +1049,7 @@ export default function App() {
               </div>
               <div className="h-px bg-slate-200 w-8"></div>
               <div 
-                onClick={() => model && setCurrentStep(2)}
+                onClick={() => consoleGen && (consoleGen === 'ps4' || model) && setCurrentStep(2)}
                 className={`flex items-center space-x-1.5 cursor-pointer text-xs font-mono transition-all ${
                   currentStep >= 2 ? "text-indigo-600 font-bold" : "text-slate-400"
                 }`}
@@ -975,92 +1075,313 @@ export default function App() {
               
               {/* STEP 1: CONSOLE MODEL */}
               {currentStep === 1 && (
-                <div className="space-y-6 flex-1 flex flex-col justify-center">
-                  <div className="text-center">
-                    <h3 className="text-lg font-display font-bold text-slate-900 mb-1">
-                      Which PlayStation 5 model do you own?
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Disk/Disc consoles support specific Blu-ray disc Java exploit payloads, whereas Digital editions utilize purely web-based hosts.
-                    </p>
-                  </div>
+                <div className="space-y-6 flex-1 flex flex-col justify-center animate-fade-in">
+                  {consoleGen === null ? (
+                    // SELECT CONSOLE GENERATION WITH PICS
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <h3 className="text-lg font-display font-bold text-slate-900 mb-1">
+                          Select Your PlayStation Generation
+                        </h3>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          Choose your console platform to load compatible firmware exploits, kernels, and customized interactive guide checklists.
+                        </p>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-xl mx-auto w-full pt-2">
-                    {/* DIGITAL OPTION */}
-                    <button
-                      onClick={() => {
-                        setModel('digital');
-                        setCurrentStep(2);
-                      }}
-                      className={`group relative p-6 rounded-xl border text-left transition-all ${
-                        model === 'digital'
-                          ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                          <Cpu className="h-5 w-5" />
-                        </div>
-                        <span className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-widest">Symmetrical Design</span>
-                      </div>
-                      <h4 className="text-sm font-semibold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">Digital Version</h4>
-                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        Sleek edition without optical drive tray. Relies entirely on the Webkit browser sandbox for payload delivery and homebrew setup.
-                      </p>
-                      <div className="mt-4 pt-4 border-t border-slate-200/80 flex items-center justify-between text-xs text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span>Select Version</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </div>
-                    </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto w-full pt-2">
+                        {/* PLAYSTATION 4 */}
+                        <button
+                          onClick={() => {
+                            setConsoleGen('ps4');
+                            setModel(null); // Let them choose their sub-model Fat/Slim/Pro
+                            setFirmwareInput("9.00");
+                          }}
+                          className="group relative bg-slate-50 border border-slate-200 hover:border-indigo-500 hover:bg-slate-100/30 rounded-2xl p-4 text-left transition-all overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-lg hover:shadow-indigo-500/5 duration-300 cursor-pointer"
+                        >
+                          <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-slate-950 mb-4 relative border border-slate-100">
+                            <img 
+                              src={ps4ConsoleImg} 
+                              alt="PlayStation 4 Console" 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider font-semibold">
+                              Firmwares ≤ 11.00
+                            </span>
+                          </div>
+                          
+                          <div>
+                            <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                              PlayStation 4
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                              Run GoldHEN to enable homebrew loaders, package installers, game cheats, FTP servers, and temperature monitoring.
+                            </p>
+                          </div>
+                          
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-mono font-semibold">
+                            <span>Explore PS4 Guides</span>
+                            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </button>
 
-                    {/* DISK OPTION */}
-                    <button
-                      onClick={() => {
-                        setModel('disk');
-                        setCurrentStep(2);
-                      }}
-                      className={`group relative p-6 rounded-xl border text-left transition-all ${
-                        model === 'disk'
-                          ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                          <Disc className="h-5 w-5" />
-                        </div>
-                        <span className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-widest">Blu-Ray Built-In</span>
+                        {/* PLAYSTATION 5 */}
+                        <button
+                          onClick={() => {
+                            setConsoleGen('ps5');
+                            setModel(null); // Let them choose Digital vs Disc
+                            setFirmwareInput("4.03");
+                          }}
+                          className="group relative bg-slate-50 border border-slate-200 hover:border-indigo-500 hover:bg-slate-100/30 rounded-2xl p-4 text-left transition-all overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-lg hover:shadow-indigo-500/5 duration-300 cursor-pointer"
+                        >
+                          <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-slate-950 mb-4 relative border border-slate-100">
+                            <img 
+                              src={ps5ConsoleImg} 
+                              alt="PlayStation 5 Console" 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-rose-600 text-white px-2 py-0.5 rounded uppercase tracking-wider font-semibold">
+                              Firmwares ≤ 4.51
+                            </span>
+                          </div>
+                          
+                          <div>
+                            <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                              PlayStation 5
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                              Run UMTX kernel exploits, BD-JB Java disc payloads, or Mast1c0re PS4 emulator exploits.
+                            </p>
+                          </div>
+                          
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-mono font-semibold">
+                            <span>Explore PS5 Guides</span>
+                            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </button>
                       </div>
-                      <h4 className="text-sm font-semibold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">Disk / Disc Version</h4>
-                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        Consoles equipped with the physical Blu-ray drive. Supports BD-JB Java disc exploits which are highly stable and reliable.
-                      </p>
-                      <div className="mt-4 pt-4 border-t border-slate-200/80 flex items-center justify-between text-xs text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span>Select Version</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
+                  ) : consoleGen === 'ps4' ? (
+                    // SELECT PS4 MODEL TYPE
+                    <div className="space-y-5 animate-fade-in">
+                      <div className="text-center">
+                        <button 
+                          onClick={() => setConsoleGen(null)}
+                          className="text-xs text-indigo-600 hover:text-indigo-700 inline-flex items-center space-x-1 mb-2 font-mono cursor-pointer"
+                        >
+                          <ArrowLeft className="h-3 w-3" />
+                          <span>Change Console Generation</span>
+                        </button>
+                        <h3 className="text-lg font-display font-bold text-slate-900 mb-1">
+                          Which PlayStation 4 model do you own?
+                        </h3>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          All PS4 hardware models support the identical Webkit and PPPwn exploits, but choosing your exact hardware matches our setup logs correctly.
+                        </p>
                       </div>
-                    </button>
-                  </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto w-full pt-2">
+                        {/* FAT */}
+                        <button
+                          onClick={() => {
+                            setModel('fat');
+                            setCurrentStep(2);
+                          }}
+                          className={`group relative p-5 rounded-xl border text-left transition-all cursor-pointer ${
+                            model === 'fat'
+                              ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
+                              : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Layers className="h-4.5 w-4.5" />
+                            </div>
+                            <span className="text-[9px] font-mono font-medium text-slate-400 uppercase tracking-widest">Original</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-900 mt-3 group-hover:text-indigo-600 transition-colors">PS4 Fat / Classic</h4>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                            Includes 10xx, 11xx, and 12xx series hardware revisions. Both touch or tactile power buttons.
+                          </p>
+                          <div className="mt-3 pt-3 border-t border-slate-200/85 flex items-center justify-between text-[11px] text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Select Fat</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </div>
+                        </button>
+
+                        {/* SLIM */}
+                        <button
+                          onClick={() => {
+                            setModel('slim');
+                            setCurrentStep(2);
+                          }}
+                          className={`group relative p-5 rounded-xl border text-left transition-all cursor-pointer ${
+                            model === 'slim'
+                              ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
+                              : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Cpu className="h-4.5 w-4.5" />
+                            </div>
+                            <span className="text-[9px] font-mono font-medium text-slate-400 uppercase tracking-widest">Slimmer</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-900 mt-3 group-hover:text-indigo-600 transition-colors">PS4 Slim</h4>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                            20xx and 21xx/22xx series revisions. Extremely light-weight, highly energy efficient, and silent.
+                          </p>
+                          <div className="mt-3 pt-3 border-t border-slate-200/85 flex items-center justify-between text-[11px] text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Select Slim</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </div>
+                        </button>
+
+                        {/* PRO */}
+                        <button
+                          onClick={() => {
+                            setModel('pro');
+                            setCurrentStep(2);
+                          }}
+                          className={`group relative p-5 rounded-xl border text-left transition-all cursor-pointer ${
+                            model === 'pro'
+                              ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
+                              : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Sparkles className="h-4.5 w-4.5" />
+                            </div>
+                            <span className="text-[9px] font-mono font-medium text-slate-400 uppercase tracking-widest">Enhanced</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-900 mt-3 group-hover:text-indigo-600 transition-colors">PS4 Pro</h4>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                            70xx, 71xx, and 72xx series hardware. Enhanced GPU clock, 4K render capability, and extra USB port.
+                          </p>
+                          <div className="mt-3 pt-3 border-t border-slate-200/85 flex items-center justify-between text-[11px] text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Select Pro</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </div>
+                        </button>
+                      </div>
+
+                      <div className="text-center pt-2">
+                        <button
+                          onClick={() => {
+                            setModel('all');
+                            setCurrentStep(2);
+                          }}
+                          className="text-xs text-slate-500 hover:text-indigo-600 transition-colors font-sans underline underline-offset-4 cursor-pointer"
+                        >
+                          Skip and select general PS4 / All Models
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // SELECT PS5 MODEL TYPE
+                    <div className="space-y-6 animate-fade-in">
+                      <div className="text-center">
+                        <button 
+                          onClick={() => setConsoleGen(null)}
+                          className="text-xs text-indigo-600 hover:text-indigo-700 inline-flex items-center space-x-1 mb-2 font-mono cursor-pointer"
+                        >
+                          <ArrowLeft className="h-3 w-3" />
+                          <span>Change Console Generation</span>
+                        </button>
+                        <h3 className="text-lg font-display font-bold text-slate-900 mb-1">
+                          Which PlayStation 5 model do you own?
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          Disk/Disc consoles support specific Blu-ray disc Java exploit payloads, whereas Digital editions utilize purely web-based hosts.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-xl mx-auto w-full pt-2">
+                        {/* DIGITAL OPTION */}
+                        <button
+                          onClick={() => {
+                            setModel('digital');
+                            setCurrentStep(2);
+                          }}
+                          className={`group relative p-6 rounded-xl border text-left transition-all cursor-pointer ${
+                            model === 'digital'
+                              ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
+                              : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Cpu className="h-5 w-5" />
+                            </div>
+                            <span className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-widest">Symmetrical Design</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">Digital Version</h4>
+                          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                            Sleek edition without optical drive tray. Relies entirely on the Webkit browser sandbox for payload delivery and homebrew setup.
+                          </p>
+                          <div className="mt-4 pt-4 border-t border-slate-200/80 flex items-center justify-between text-xs text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Select Version</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </div>
+                        </button>
+
+                        {/* DISK OPTION */}
+                        <button
+                          onClick={() => {
+                            setModel('disk');
+                            setCurrentStep(2);
+                          }}
+                          className={`group relative p-6 rounded-xl border text-left transition-all cursor-pointer ${
+                            model === 'disk'
+                              ? 'bg-indigo-50/50 border-indigo-500 shadow-md shadow-indigo-500/5 text-slate-950'
+                              : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Disc className="h-5 w-5" />
+                            </div>
+                            <span className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-widest">Blu-Ray Built-In</span>
+                          </div>
+                          <h4 className="text-sm font-semibold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">Disk / Disc Version</h4>
+                          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                            Consoles equipped with the physical Blu-ray drive. Supports BD-JB Java disc exploits which are highly stable and reliable.
+                          </p>
+                          <div className="mt-4 pt-4 border-t border-slate-200/80 flex items-center justify-between text-xs text-indigo-600 font-mono font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Select Version</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* STEP 2: FIRMWARE INPUT */}
               {currentStep === 2 && (
-                <div className="space-y-6 flex-1 flex flex-col justify-center">
+                <div className="space-y-6 flex-1 flex flex-col justify-center animate-fade-in">
                   <div className="text-center">
                     <button 
                       onClick={() => setCurrentStep(1)}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 inline-flex items-center space-x-1 mb-2 font-mono"
+                      className="text-xs text-indigo-600 hover:text-indigo-700 inline-flex items-center space-x-1 mb-2 font-mono cursor-pointer"
                     >
                       <ArrowLeft className="h-3 w-3" />
-                      <span>Back to Model Selection ({model === 'digital' ? 'Digital' : 'Disk'})</span>
+                      <span>Back to Model Selection ({consoleGen === 'ps4' ? 'PS4' : 'PS5'} {model ? model.charAt(0).toUpperCase() + model.slice(1) : ''})</span>
                     </button>
                     <h3 className="text-lg font-display font-bold text-slate-900">
                       Enter Your System Firmware Version
                     </h3>
                     <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                      Check your firmware version on your PS5 in: <span className="text-indigo-600 font-mono font-semibold bg-indigo-50/50 px-1 py-0.5 rounded border border-indigo-100">Settings &gt; System &gt; System Software &gt; Console Information</span>.
+                      {consoleGen === 'ps4' ? (
+                        <>Check your firmware version on your PS4 in: <span className="text-indigo-600 font-mono font-semibold bg-indigo-50/50 px-1 py-0.5 rounded border border-indigo-100">Settings &gt; System &gt; System Information</span>.</>
+                      ) : (
+                        <>Check your firmware version on your PS5 in: <span className="text-indigo-600 font-mono font-semibold bg-indigo-50/50 px-1 py-0.5 rounded border border-indigo-100">Settings &gt; System &gt; System Software &gt; Console Information</span>.</>
+                      )}
                     </p>
                   </div>
 
@@ -1078,7 +1399,7 @@ export default function App() {
                             setFirmwareInput(clean);
                           }}
                           className="w-full bg-transparent text-xl font-mono font-bold text-slate-900 placeholder-slate-300 border-none outline-none focus:ring-0"
-                          placeholder="e.g. 4.03"
+                          placeholder={consoleGen === 'ps4' ? "e.g. 9.00" : "e.g. 4.03"}
                         />
                       </div>
                       <div className="h-10 w-px bg-slate-200"></div>
@@ -1086,6 +1407,14 @@ export default function App() {
                         <span className="text-[10px] block font-mono text-slate-500 uppercase">Input Status</span>
                         {isNaN(parseFloat(firmwareInput)) ? (
                           <span className="text-xs font-mono font-bold text-rose-600">Invalid Number</span>
+                        ) : consoleGen === 'ps4' ? (
+                          parseFloat(firmwareInput) <= 11.00 ? (
+                            <span className="text-xs font-mono font-bold text-emerald-600">✓ Hackable</span>
+                          ) : parseFloat(firmwareInput) <= 11.50 ? (
+                            <span className="text-xs font-mono font-bold text-amber-600">⚡ Webkit Only</span>
+                          ) : (
+                            <span className="text-xs font-mono font-bold text-slate-500">No Jailbreak Yet</span>
+                          )
                         ) : parseFloat(firmwareInput) <= 4.51 ? (
                           <span className="text-xs font-mono font-bold text-emerald-600">✓ Hackable</span>
                         ) : parseFloat(firmwareInput) <= 7.61 ? (
@@ -1106,7 +1435,7 @@ export default function App() {
                           <button
                             key={preset.value}
                             onClick={() => setFirmwareInput(preset.value)}
-                            className={`p-2 rounded-lg text-xs font-mono border text-center transition-all ${
+                            className={`p-2 rounded-lg text-xs font-mono border text-center transition-all cursor-pointer ${
                               firmwareInput === preset.value
                                 ? "bg-indigo-600 border-indigo-500 text-white font-bold"
                                 : "bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100/50"
@@ -1125,11 +1454,11 @@ export default function App() {
                           if (firmwareInput && !isNaN(parseFloat(firmwareInput))) {
                             setCurrentStep(3);
                           } else {
-                            toast.warning("Please enter a valid numeric firmware version (e.g. 4.03)");
+                            toast.warning("Please enter a valid numeric firmware version (e.g. 9.00)");
                           }
                         }}
                         disabled={!firmwareInput || isNaN(parseFloat(firmwareInput))}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-500 hover:to-blue-400 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow-md shadow-indigo-600/10 flex items-center justify-center space-x-1.5 disabled:opacity-40"
+                        className="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-500 hover:to-blue-400 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow-md shadow-indigo-600/10 flex items-center justify-center space-x-1.5 disabled:opacity-40 cursor-pointer"
                       >
                         <span>Match Hack Tutorial</span>
                         <ArrowRight className="h-4 w-4" />
