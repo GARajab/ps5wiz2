@@ -49,6 +49,7 @@ export default function App() {
   const [model, setModel] = useState<PS5ModelType | null>(null);
   const [firmwareInput, setFirmwareInput] = useState<string>("4.03");
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0);
   const [checkedRequirements, setCheckedRequirements] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
 
@@ -290,6 +291,86 @@ export default function App() {
     fetchTutorials();
   }, []);
 
+  // Reset selected video index when navigation states change
+  useEffect(() => {
+    setSelectedVideoIndex(0);
+  }, [currentStep, firmwareInput, consoleGen, model]);
+
+  // Comprehensive list of PlayStation system firmware milestones (1.00 - 12.00)
+  const FIRMWARE_VALUES = [
+    "1.00", "1.76", "2.00", "3.00", "3.10", "3.20", "3.21", "4.00", "4.03", "4.50", "4.51", 
+    "5.00", "5.05", "5.50", "6.00", "6.72", "7.00", "7.02", "7.50", "7.55", "7.61", "8.00", 
+    "8.20", "9.00", "9.03", "9.04", "9.60", "10.00", "10.01", "10.50", "10.70", "10.71", 
+    "11.00", "11.02", "11.50", "11.52", "12.00"
+  ];
+
+  // Parse any stored youtubeId value to check if it's a multiple video array JSON
+  const parseTutorialVideos = (youtubeIdValue: string, tutorialName: string, minFw: number, maxFw: number) => {
+    if (!youtubeIdValue) return [];
+    const val = youtubeIdValue.trim();
+    if (val.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) {
+          return parsed.map((v: any) => ({
+            youtubeId: String(v.youtubeId || v.url || ''),
+            minFirmware: Number(v.minFirmware !== undefined ? v.minFirmware : minFw),
+            maxFirmware: Number(v.maxFirmware !== undefined ? v.maxFirmware : maxFw),
+            title: String(v.title || tutorialName || 'Video Guide')
+          }));
+        }
+      } catch (e) {
+        console.error("Failed to parse nested videos JSON:", e);
+      }
+    }
+    // Fallback: single video spanning the whole range
+    return [{
+      youtubeId: youtubeIdValue,
+      minFirmware: minFw,
+      maxFirmware: maxFw,
+      title: tutorialName || 'Companion Video Guide'
+    }];
+  };
+
+  // Find matching videos for the user's entered firmware
+  const getMatchedVideos = () => {
+    if (!consoleGen) return [];
+    const firmwareNum = parseFloat(firmwareInput);
+    if (isNaN(firmwareNum)) return [];
+
+    const matchedList: { youtubeId: string; minFirmware: number; maxFirmware: number; title: string; tutorialName: string }[] = [];
+    
+    tutorials.forEach(t => {
+      const isPs4Tutorial = t.id.startsWith('ps4-');
+      const isPs5Tutorial = !isPs4Tutorial;
+
+      if (consoleGen === 'ps4' && !isPs4Tutorial) return;
+      if (consoleGen === 'ps5' && !isPs5Tutorial) return;
+
+      let isModelCompatible = true;
+      if (consoleGen === 'ps5') {
+        isModelCompatible = t.ps5Model === 'both' || t.ps5Model === model;
+      } else if (consoleGen === 'ps4') {
+        isModelCompatible = t.ps5Model === 'all' || t.ps5Model === 'both' || t.ps5Model === model || model === 'all';
+      }
+
+      if (!isModelCompatible) return;
+
+      // Parse videos
+      const videos = parseTutorialVideos(t.youtubeId, t.name, t.minFirmware, t.maxFirmware);
+      videos.forEach(v => {
+        if (firmwareNum >= v.minFirmware && firmwareNum <= v.maxFirmware) {
+          matchedList.push({
+            ...v,
+            tutorialName: t.name
+          });
+        }
+      });
+    });
+
+    return matchedList;
+  };
+
   // Helper to extract YouTube video ID from various formats
   const extractYoutubeId = (urlOrId: string): string => {
     if (!urlOrId) return "";
@@ -408,7 +489,9 @@ export default function App() {
       ...editingTutorial,
       minFirmware: Number(editingTutorial.minFirmware || 1.00),
       maxFirmware: Number(editingTutorial.maxFirmware || 12.00),
-      youtubeId: extractYoutubeId(editingTutorial.youtubeId || ""),
+      youtubeId: (editingTutorial.youtubeId && editingTutorial.youtubeId.trim().startsWith('[')) 
+        ? editingTutorial.youtubeId.trim() 
+        : extractYoutubeId(editingTutorial.youtubeId || ""),
       requirements: formatList(editingTutorial.requirements),
       steps: formatList(editingTutorial.steps)
     } as Tutorial;
@@ -867,8 +950,8 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Status, Difficulty, Youtube ID */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Status, Difficulty */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-500 mb-1 font-semibold">Status Badge (e.g. Stable)</label>
                             <input
@@ -892,38 +975,208 @@ export default function App() {
                               <option value="Hard">Hard</option>
                             </select>
                           </div>
-                          <div>
-                            <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-500 mb-1 font-semibold flex items-center gap-1">
-                              <Video className="h-3 w-3 text-red-500" />
-                              YouTube Video URL / ID
-                            </label>
-                            <input
-                              type="text"
-                              value={editingTutorial.youtubeId || ""}
-                              onChange={(e) => updateEditingField("youtubeId", e.target.value)}
-                              placeholder="e.g. b-hWeq-G99s or full URL"
-                              className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded px-3 py-2 text-xs text-slate-900 focus:outline-none font-mono"
-                            />
-                          </div>
                         </div>
 
-                        {/* Youtube Preview Widget */}
-                        {editingTutorial.youtubeId && (
-                          <div className="p-3 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
-                            <div className="flex items-center space-x-2.5">
-                              <div className="h-8 w-8 rounded bg-red-50 flex items-center justify-center">
-                                <Video className="h-4.5 w-4.5 text-white" />
+                        {/* YouTube Video List Manager Section */}
+                        {(() => {
+                          const editingVideos = editingTutorial ? parseTutorialVideos(
+                            editingTutorial.youtubeId || "",
+                            editingTutorial.name || "",
+                            editingTutorial.minFirmware || 1.00,
+                            editingTutorial.maxFirmware || 12.00
+                          ) : [];
+
+                          return (
+                            <div className="bg-slate-100/60 rounded-xl p-4 border border-slate-200/80 space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="text-xs font-mono uppercase tracking-wider text-slate-700 font-bold flex items-center gap-1.5">
+                                    <Video className="h-4 w-4 text-red-500" />
+                                    Video Guides & Firmware Ranges
+                                  </h4>
+                                  <p className="text-[10px] text-slate-500">
+                                    Associate multiple videos with overlapping or distinct firmware ranges.
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!editingTutorial) return;
+                                    const currentVideos = parseTutorialVideos(
+                                      editingTutorial.youtubeId || "",
+                                      editingTutorial.name || "",
+                                      editingTutorial.minFirmware || 1.00,
+                                      editingTutorial.maxFirmware || 12.00
+                                    );
+                                    const newVideo = {
+                                      youtubeId: "",
+                                      minFirmware: editingTutorial.minFirmware || 1.00,
+                                      maxFirmware: editingTutorial.maxFirmware || 12.00,
+                                      title: `Alternative Setup Video ${currentVideos.length + 1}`
+                                    };
+                                    const updated = [...currentVideos, newVideo];
+                                    updateEditingField("youtubeId", JSON.stringify(updated));
+                                  }}
+                                  className="text-[11px] font-mono font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded flex items-center gap-1 cursor-pointer transition-colors"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Add Video
+                                </button>
                               </div>
-                              <div>
-                                <span className="text-[10px] block font-mono text-slate-500 uppercase">Live Embed Preview Key</span>
-                                <span className="text-xs font-mono font-medium text-slate-900">{extractYoutubeId(editingTutorial.youtubeId)}</span>
-                              </div>
+
+                              {editingVideos.length === 0 ? (
+                                <div className="p-4 bg-white rounded-lg border border-slate-200 text-center text-xs text-slate-500 italic">
+                                  No videos added yet. Click "Add Video" to associate a video tutorial with a firmware range.
+                                </div>
+                              ) : (
+                                <div className="space-y-3.5">
+                                  {editingVideos.map((video, idx) => (
+                                    <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 space-y-3 relative group">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                                          Video #{idx + 1}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const currentVideos = [...editingVideos];
+                                            currentVideos.splice(idx, 1);
+                                            updateEditingField("youtubeId", currentVideos.length > 0 ? JSON.stringify(currentVideos) : "");
+                                          }}
+                                          className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                          title="Remove Video"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {/* Video Link */}
+                                        <div>
+                                          <label className="block text-[10px] font-mono uppercase text-slate-500 mb-0.5">YouTube Link / Video ID</label>
+                                          <input
+                                            type="text"
+                                            value={video.youtubeId}
+                                            onChange={(e) => {
+                                              const currentVideos = [...editingVideos];
+                                              currentVideos[idx].youtubeId = extractYoutubeId(e.target.value);
+                                              updateEditingField("youtubeId", JSON.stringify(currentVideos));
+                                            }}
+                                            placeholder="e.g. b-hWeq-G99s or full URL"
+                                            className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none font-mono"
+                                            required
+                                          />
+                                        </div>
+
+                                        {/* Video Title */}
+                                        <div>
+                                          <label className="block text-[10px] font-mono uppercase text-slate-500 mb-0.5">Video Title / Label</label>
+                                          <input
+                                            type="text"
+                                            value={video.title}
+                                            onChange={(e) => {
+                                              const currentVideos = [...editingVideos];
+                                              currentVideos[idx].title = e.target.value;
+                                              updateEditingField("youtubeId", JSON.stringify(currentVideos));
+                                            }}
+                                            placeholder="e.g. PPPwn Exploit USB Guide"
+                                            className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none"
+                                            required
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Firmware Ranges Select Dropdowns */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded border border-slate-100">
+                                        <div>
+                                          <label className="block text-[10px] font-mono uppercase text-slate-500 mb-1">
+                                            Min Firmware Supported
+                                          </label>
+                                          <div className="flex gap-1.5">
+                                            <select
+                                              value={video.minFirmware.toFixed(2)}
+                                              onChange={(e) => {
+                                                const currentVideos = [...editingVideos];
+                                                currentVideos[idx].minFirmware = parseFloat(e.target.value);
+                                                updateEditingField("youtubeId", JSON.stringify(currentVideos));
+                                              }}
+                                              className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none"
+                                            >
+                                              {FIRMWARE_VALUES.map(val => (
+                                                <option key={val} value={val}>v{val}</option>
+                                              ))}
+                                            </select>
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              value={video.minFirmware}
+                                              onChange={(e) => {
+                                                const currentVideos = [...editingVideos];
+                                                currentVideos[idx].minFirmware = parseFloat(e.target.value) || 1.00;
+                                                updateEditingField("youtubeId", JSON.stringify(currentVideos));
+                                              }}
+                                              className="w-16 bg-white border border-slate-200 focus:border-indigo-500 rounded px-1.5 py-1 text-xs text-slate-900 focus:outline-none text-center font-mono"
+                                              title="Custom Min Firmware"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <label className="block text-[10px] font-mono uppercase text-slate-500 mb-1">
+                                            Max Firmware Supported
+                                          </label>
+                                          <div className="flex gap-1.5">
+                                            <select
+                                              value={video.maxFirmware.toFixed(2)}
+                                              onChange={(e) => {
+                                                const currentVideos = [...editingVideos];
+                                                currentVideos[idx].maxFirmware = parseFloat(e.target.value);
+                                                updateEditingField("youtubeId", JSON.stringify(currentVideos));
+                                              }}
+                                              className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-1 text-xs text-slate-900 focus:outline-none"
+                                            >
+                                              {FIRMWARE_VALUES.map(val => (
+                                                <option key={val} value={val}>v{val}</option>
+                                              ))}
+                                            </select>
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              value={video.maxFirmware}
+                                              onChange={(e) => {
+                                                const currentVideos = [...editingVideos];
+                                                currentVideos[idx].maxFirmware = parseFloat(e.target.value) || 12.00;
+                                                updateEditingField("youtubeId", JSON.stringify(currentVideos));
+                                              }}
+                                              className="w-16 bg-white border border-slate-200 focus:border-indigo-500 rounded px-1.5 py-1 text-xs text-slate-900 focus:outline-none text-center font-mono"
+                                              title="Custom Max Firmware"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Embed Mini-Preview */}
+                                      {video.youtubeId && (
+                                        <div className="text-[10px] font-mono text-slate-400 bg-slate-50 p-1.5 rounded flex items-center justify-between">
+                                          <span className="truncate">Embed ID: <strong className="text-slate-850 font-bold">{video.youtubeId}</strong></span>
+                                          <a
+                                            href={`https://www.youtube.com/watch?v=${video.youtubeId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-rose-600 hover:underline flex items-center gap-0.5 font-sans"
+                                          >
+                                            <span>Test Link</span>
+                                            <ExternalLink className="h-2.5 w-2.5" />
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 font-mono">
-                              Embedded Successfully
-                            </span>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         {/* Description */}
                         <div>
@@ -1116,7 +1369,7 @@ export default function App() {
                               PlayStation 4
                             </h4>
                             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                              Run GoldHEN to enable homebrew loaders, package installers, game cheats, FTP servers, and temperature monitoring.
+                              Welcome To Freedum.
                             </p>
                           </div>
                           
@@ -1523,43 +1776,107 @@ export default function App() {
                       </div>
 
                       {/* Video Guide Embed Area */}
-                      {matchedTutorial.youtubeId ? (
-                        <div className="space-y-2">
-                          <h5 className="text-xs font-mono uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                            <Video className="h-3.5 w-3.5 text-red-500" />
-                            YouTube Companion Tutorial (Recommended Video)
-                          </h5>
-                          <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
-                            <iframe
-                              src={`https://www.youtube.com/embed/${extractYoutubeId(matchedTutorial.youtubeId)}`}
-                              title={`${matchedTutorial.name} Tutorial Guide`}
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="absolute inset-0 w-full h-full border-0"
-                            ></iframe>
+                      {(() => {
+                        const matchedVideos = getMatchedVideos();
+                        if (matchedVideos.length === 0) {
+                          return (
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-3 text-slate-500">
+                              <Video className="h-5 w-5 text-slate-400 shrink-0" />
+                              <p className="text-xs italic">No video tutorial was embedded for this firmware method yet.</p>
+                            </div>
+                          );
+                        }
+
+                        // Ensure we have a valid selected index
+                        const activeIndex = selectedVideoIndex < matchedVideos.length ? selectedVideoIndex : 0;
+                        const activeVideo = matchedVideos[activeIndex];
+
+                        return (
+                          <div className="space-y-4 animate-fade-in">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-150 pb-2">
+                              <h5 className="text-xs font-mono uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                <Video className="h-3.5 w-3.5 text-red-500" />
+                                {matchedVideos.length > 1 ? `Compatible Video Guides (${matchedVideos.length} found)` : "Companion Video Guide"}
+                              </h5>
+                              {matchedVideos.length > 1 && (
+                                <span className="text-[10px] font-semibold bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-mono animate-pulse">
+                                  Overlapping FW Videos Found!
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Multiple Videos Selection Tabs */}
+                            {matchedVideos.length > 1 && (
+                              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl space-y-2">
+                                <p className="text-[11px] text-slate-650 font-medium px-1">
+                                  Select a companion video covering firmware range {firmwareInput}:
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {matchedVideos.map((vid, idx) => {
+                                    const isSelected = idx === activeIndex;
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => setSelectedVideoIndex(idx)}
+                                        className={`p-2.5 rounded-lg border text-left transition-all text-xs cursor-pointer ${
+                                          isSelected
+                                            ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
+                                            : "bg-white border-slate-200 hover:bg-slate-105 hover:bg-slate-50 text-slate-750"
+                                        }`}
+                                      >
+                                        <div className="font-semibold line-clamp-1 flex items-center gap-1">
+                                          {isSelected && <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>}
+                                          {vid.title}
+                                        </div>
+                                        <div className={`text-[10px] mt-0.5 font-mono ${isSelected ? "text-indigo-200" : "text-slate-450"}`}>
+                                          FW: {vid.minFirmware.toFixed(2)} - {vid.maxFirmware.toFixed(2)}
+                                          {vid.tutorialName && vid.tutorialName !== vid.title && ` • (${vid.tutorialName})`}
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Embed Iframe Area */}
+                            {activeVideo.youtubeId ? (
+                              <div className="space-y-2 animate-fade-in">
+                                <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+                                  <iframe
+                                    src={`https://www.youtube.com/embed/${extractYoutubeId(activeVideo.youtubeId)}`}
+                                    title={`${activeVideo.title} Tutorial Guide`}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="absolute inset-0 w-full h-full border-0"
+                                  ></iframe>
+                                </div>
+                                <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-1 px-1">
+                                  <p className="text-[10px] text-slate-500 italic truncate max-w-full sm:max-w-md">
+                                    Playing: <span className="font-semibold text-slate-750 font-mono">{activeVideo.title}</span> (FW: {activeVideo.minFirmware.toFixed(2)} - {activeVideo.maxFirmware.toFixed(2)})
+                                  </p>
+                                  <a
+                                    href={`https://www.youtube.com/watch?v=${extractYoutubeId(activeVideo.youtubeId)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold text-rose-600 hover:text-rose-500 transition-colors shrink-0 bg-rose-50 px-2 py-1 rounded-md border border-rose-100"
+                                    id="btn-watch-youtube"
+                                  >
+                                    <span>Watch on YouTube</span>
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-3 text-slate-500">
+                                <Video className="h-5 w-5 text-slate-400 shrink-0" />
+                                <p className="text-xs italic">This selected video is missing its YouTube URL or ID.</p>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-1 px-1">
-                            <p className="text-[10px] text-slate-400 italic">
-                              Watch this companion guide to verify physical steps.
-                            </p>
-                            <a
-                              href={`https://www.youtube.com/watch?v=${extractYoutubeId(matchedTutorial.youtubeId)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold text-rose-600 hover:text-rose-500 transition-colors shrink-0 bg-rose-50 px-2 py-1 rounded-md border border-rose-100"
-                              id="btn-watch-youtube"
-                            >
-                              <span>Watch on YouTube</span>
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-3 text-slate-500">
-                          <Video className="h-5 w-5 text-slate-400 shrink-0" />
-                          <p className="text-xs italic">No video tutorial was embedded for this firmware method yet.</p>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Pre-requisites checklist */}
                       <div className="space-y-2.5">
