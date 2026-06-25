@@ -1206,13 +1206,24 @@ export default function App() {
                               title={`${matchedTutorial.name} Tutorial Guide`}
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               allowFullScreen
-                              referrerPolicy="no-referrer"
                               className="absolute inset-0 w-full h-full border-0"
                             ></iframe>
                           </div>
-                          <p className="text-[10px] text-slate-400 text-center italic">
-                            Watch this companion guide to verify the physical steps and payload loading logs.
-                          </p>
+                          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-1 px-1">
+                            <p className="text-[10px] text-slate-400 italic">
+                              Watch this companion guide to verify physical steps.
+                            </p>
+                            <a
+                              href={`https://www.youtube.com/watch?v=${extractYoutubeId(matchedTutorial.youtubeId)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold text-rose-600 hover:text-rose-500 transition-colors shrink-0 bg-rose-50 px-2 py-1 rounded-md border border-rose-100"
+                              id="btn-watch-youtube"
+                            >
+                              <span>Watch on YouTube</span>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
                         </div>
                       ) : (
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-3 text-slate-500">
