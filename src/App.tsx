@@ -35,8 +35,11 @@ import {
   deleteSupabaseTutorial, 
   getSupabaseSQLScript 
 } from './lib/supabase';
+import { useToast } from './components/Toast';
 
 export default function App() {
+  const toast = useToast();
+
   // Wizard States
   const [model, setModel] = useState<PS5ModelType | null>(null);
   const [firmwareInput, setFirmwareInput] = useState<string>("4.03");
@@ -278,7 +281,7 @@ export default function App() {
 
     // Validate
     if (!editingTutorial.id || !editingTutorial.name) {
-      alert("Please provide a Tutorial ID and Name");
+      toast.warning("Please provide a Tutorial ID and Name");
       return;
     }
 
@@ -307,7 +310,7 @@ export default function App() {
           await fetchTutorials();
           setIsCreatingNew(false);
           setEditingTutorial(saved);
-          alert("Tutorial successfully saved to Supabase cloud database!");
+          toast.success("Tutorial successfully saved to Supabase cloud database!");
           return;
         }
       }
@@ -325,7 +328,7 @@ export default function App() {
           await fetchTutorials();
           setIsCreatingNew(false);
           setEditingTutorial(result.data);
-          alert("Tutorial database updated on local server successfully!");
+          toast.success("Tutorial database updated on local server successfully!");
           return;
         }
       } catch (srvErr) {
@@ -344,9 +347,9 @@ export default function App() {
       localStorage.setItem('ps5-jailbreak-tutorials', JSON.stringify(currentList));
       setIsCreatingNew(false);
       setEditingTutorial(formattedTutorial);
-      alert("Notice: Running in Offline Mode. Tutorial saved to local browser cache. Connect Supabase to persist changes globally!");
+      toast.info("Notice: Running in Offline Mode. Tutorial saved to local browser cache. Connect Supabase to persist changes globally!");
     } catch (err: any) {
-      alert(`Error saving tutorial: ${err.message}`);
+      toast.error(`Error saving tutorial: ${err.message}`);
     }
   };
 
@@ -364,7 +367,7 @@ export default function App() {
           } else {
             setEditingTutorial(null);
           }
-          alert("Tutorial deleted from Supabase database.");
+          toast.success("Tutorial deleted from Supabase database.");
           return;
         }
       }
@@ -382,7 +385,7 @@ export default function App() {
           } else {
             setEditingTutorial(null);
           }
-          alert("Tutorial deleted from local server database.");
+          toast.success("Tutorial deleted from local server database.");
           return;
         }
       } catch (srvErr) {
@@ -398,9 +401,9 @@ export default function App() {
       } else {
         setEditingTutorial(null);
       }
-      alert("Tutorial removed from offline browser cache.");
+      toast.info("Tutorial removed from offline browser cache.");
     } catch (err: any) {
-      alert(`Error deleting: ${err.message}`);
+      toast.error(`Error deleting: ${err.message}`);
     }
   };
 
@@ -543,7 +546,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(getSupabaseSQLScript());
-                      alert("Supabase table SQL setup script copied to clipboard!");
+                      toast.success("Supabase table SQL setup script copied to clipboard!");
                     }}
                     className="absolute top-2 right-2 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-[10px] text-white rounded font-sans font-medium transition-all shadow-sm"
                   >
@@ -1112,7 +1115,7 @@ export default function App() {
                           if (firmwareInput && !isNaN(parseFloat(firmwareInput))) {
                             setCurrentStep(3);
                           } else {
-                            alert("Please enter a valid numeric firmware version (e.g. 4.03)");
+                            toast.warning("Please enter a valid numeric firmware version (e.g. 4.03)");
                           }
                         }}
                         disabled={!firmwareInput || isNaN(parseFloat(firmwareInput))}
