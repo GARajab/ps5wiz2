@@ -203,7 +203,7 @@ VALUES
   'b-hWeq-G99s',
   'A full kernel exploit for firmwares 1.00 through 4.51. It uses a Webkit vulnerability (or the Blu-ray Disc Java exploit on Disc consoles) combined with the UMTX kernel exploit to enable homebrew, custom settings, and backups.',
   '["A PS5 on firmware 4.51 or lower", "A PC or phone connected to the same local Wi-Fi network", "For Disc version: A rewritable Blu-ray Disc (BD-RE) and BD Writer (Optional)", "An exFAT formatted USB drive (for homebrew)"]'::jsonb,
-  '["Navigate to PS5 Settings > Network > Settings > Set Up Internet Connection", "Highlight connection, press Options, select Advanced Settings", "Set DNS Settings to Manual. Set Primary DNS to 192.241.116.141", "Go back, restart console, open Settings > User\\'s Guide", "Select matched exploit version to run the jailbreak payload", "If on Disc using BD-JB, insert burned disc payload instead", "Wait for Success message and check Settings > Debug Settings!"]'::jsonb
+  '["Navigate to PS5 Settings > Network > Settings > Set Up Internet Connection", "Highlight connection, press Options, select Advanced Settings", "Set DNS Settings to Manual. Set Primary DNS to 192.241.116.141", "Go back, restart console, open Settings > User''''s Guide", "Select matched exploit version to run the jailbreak payload", "If on Disc using BD-JB, insert burned disc payload instead", "Wait for Success message and check Settings > Debug Settings!"]'::jsonb
 ),
 (
   'ps5-mast1c0re',
@@ -214,7 +214,7 @@ VALUES
   'Alternative Method',
   'Hard',
   'eO2ZqLgLreE',
-  'An exploit targeting the PS5\\'s built-in PS4 emulator using save game vulnerabilities. It does not provide full PS5 kernel access, but allows running PS4 homebrew, ISO backups, and retro emulators.',
+  'An exploit targeting the PS5''s built-in PS4 emulator using save game vulnerabilities. It does not provide full PS5 kernel access, but allows running PS4 homebrew, ISO backups, and retro emulators.',
   '["PS5 running firmware between 4.52 and 7.61", "Legitimate copy of the PS4 game Okage: Shadow King", "A PC or mobile device to send save files", "An active network connection on same network"]'::jsonb,
   '["Buy and download Okage: Shadow King from PS Store", "Download the mast1c0re save game exploit files on your PC", "Use save transfer tool to copy save files to your PS5 console", "Load Okage game on PS5 and restore the exploit save game", "Open the save game. The game crashes and boots mast1c0re", "Send homebrew .elf or PS4 ISO from PC to PS5 IP on port 9020"]'::jsonb
 ),
@@ -229,7 +229,7 @@ VALUES
   '8zD6H5K7P-Q',
   'There is currently no public kernel exploit or jailbreak for PS5 consoles on firmware 7.62 or higher. The golden rule of PlayStation hacking is: STAY on the lowest possible firmware and NEVER update your console.',
   '["A PS5 on firmware 7.62 or above", "A firm commitment to not updating your system!", "Automatic software updates disabled in settings"]'::jsonb,
-  '["Disable auto-updates: Settings > System > System Software Update and Settings", "Turn off Download Update Files and Install Update Files", "Optionally set up Al Azif\\'s DNS to block update servers entirely", "Wait patiently. Your current firmware is your best chance!"]'::jsonb
+  '["Disable auto-updates: Settings > System > System Software Update and Settings", "Turn off Download Update Files and Install Update Files", "Optionally set up Al Azif''s DNS to block update servers entirely", "Wait patiently. Your current firmware is your best chance!"]'::jsonb
 )
 ON CONFLICT (id) DO NOTHING;
 `;
