@@ -88,8 +88,18 @@ export default function App() {
       }
       throw new Error('Local API server failed');
     } catch (err: any) {
-      console.error(err);
+      console.error('Fetch error:', err);
       
+      let finalErrorMessage = "Offline Mode: Loaded from local browser cache.";
+      if (isSupabaseConfigured) {
+        const errMsg = err?.message || err?.details || String(err);
+        if (errMsg.includes('relation "tutorials" does not exist') || errMsg.includes('does not exist') || errMsg.includes('42P01')) {
+          finalErrorMessage = "Supabase connected, but the 'tutorials' table doesn't exist! Please click 'Admin Database Access' below, copy the SQL setup script, and run it in your Supabase SQL Editor.";
+        } else {
+          finalErrorMessage = `Supabase Connection/Auth Error: ${errMsg}. Running on local backup.`;
+        }
+      }
+
       // Try to load from localStorage first as offline fallback, otherwise use defaults
       const localCached = localStorage.getItem('ps5-jailbreak-tutorials');
       if (localCached) {
@@ -97,14 +107,14 @@ export default function App() {
           const parsed = JSON.parse(localCached);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setTutorials(parsed);
-            setErrorMessage("Offline Mode: Loaded from local browser cache.");
+            setErrorMessage(finalErrorMessage);
             return;
           }
         } catch (e) {}
       }
 
       setErrorMessage(isSupabaseConfigured 
-        ? "Could not load tutorials from Supabase. Make sure your database table exists." 
+        ? `Could not load tutorials from Supabase. Error: ${err?.message || 'Table does not exist'}` 
         : "Running in offline fallback. Setup Supabase for live database updates.");
       
       // Default fallback values

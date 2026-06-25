@@ -94,20 +94,16 @@ function mapRecordToTutorial(t: any): Tutorial {
 export async function upsertSupabaseTutorial(tutorial: Tutorial): Promise<Tutorial | null> {
   if (!supabase) return null;
   try {
-    // We construct the payload supporting both camelCase and snake_case for maximum database schema tolerance!
-    const payload = {
+    // 1. Try pure snake_case payload first (corresponds to the provided SQL setup schema)
+    const snakePayload = {
       id: tutorial.id,
       name: tutorial.name,
       min_firmware: tutorial.minFirmware,
-      minFirmware: tutorial.minFirmware,
       max_firmware: tutorial.maxFirmware,
-      maxFirmware: tutorial.maxFirmware,
       ps5_model: tutorial.ps5Model,
-      ps5Model: tutorial.ps5Model,
       status: tutorial.status,
       difficulty: tutorial.difficulty,
       youtube_id: tutorial.youtubeId,
-      youtubeId: tutorial.youtubeId,
       description: tutorial.description,
       requirements: tutorial.requirements,
       steps: tutorial.steps
@@ -115,12 +111,12 @@ export async function upsertSupabaseTutorial(tutorial: Tutorial): Promise<Tutori
 
     const { data, error } = await supabase
       .from('tutorials')
-      .upsert(payload, { onConflict: 'id' })
+      .upsert(snakePayload, { onConflict: 'id' })
       .select();
 
     if (error) {
-      // Try again without snake_case mappings just in case table schema strictly only has camelCase
-      const camelOnlyPayload = {
+      // 2. If it fails (e.g. table schema strictly uses camelCase), retry with pure camelCase payload
+      const camelPayload = {
         id: tutorial.id,
         name: tutorial.name,
         minFirmware: tutorial.minFirmware,
@@ -136,10 +132,10 @@ export async function upsertSupabaseTutorial(tutorial: Tutorial): Promise<Tutori
       
       const { data: retryData, error: retryError } = await supabase
         .from('tutorials')
-        .upsert(camelOnlyPayload, { onConflict: 'id' })
+        .upsert(camelPayload, { onConflict: 'id' })
         .select();
 
-      if (retryError) throw error;
+      if (retryError) throw error; // Throw original error if retry also fails
       return retryData && retryData[0] ? mapRecordToTutorial(retryData[0]) : tutorial;
     }
     
