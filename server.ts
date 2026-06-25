@@ -12,6 +12,14 @@ const PORT = 3000;
 // Path to our JSON database file
 const DATA_DIR = path.join(process.cwd(), "src", "data");
 const TUTORIALS_FILE = path.join(DATA_DIR, "tutorials.json");
+const FIRMWARES_FILE = path.join(DATA_DIR, "firmwares.json");
+
+const DEFAULT_FIRMWARES = [
+  "1.00", "1.76", "2.00", "3.00", "3.10", "3.20", "3.21", "4.00", "4.03", "4.50", "4.51", 
+  "5.00", "5.05", "5.50", "6.00", "6.72", "7.00", "7.02", "7.50", "7.55", "7.61", "8.00", 
+  "8.20", "9.00", "9.03", "9.04", "9.60", "10.00", "10.01", "10.50", "10.70", "10.71", 
+  "11.00", "11.02", "11.50", "11.52", "12.00"
+];
 
 // Ensure data folder and default file exist
 function ensureDatabase() {
@@ -98,6 +106,9 @@ function ensureDatabase() {
     ];
     fs.writeFileSync(TUTORIALS_FILE, JSON.stringify(defaultData, null, 2), "utf8");
   }
+  if (!fs.existsSync(FIRMWARES_FILE)) {
+    fs.writeFileSync(FIRMWARES_FILE, JSON.stringify(DEFAULT_FIRMWARES, null, 2), "utf8");
+  }
 }
 
 ensureDatabase();
@@ -123,7 +134,62 @@ function saveTutorials(data: any[]) {
   fs.writeFileSync(TUTORIALS_FILE, JSON.stringify(data, null, 2), "utf8");
 }
 
+function getFirmwares(): string[] {
+  ensureDatabase();
+  try {
+    const raw = fs.readFileSync(FIRMWARES_FILE, "utf8");
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("Error reading firmwares database:", err);
+    return DEFAULT_FIRMWARES;
+  }
+}
+
+function saveFirmwares(data: string[]) {
+  ensureDatabase();
+  const sorted = [...data].sort((a, b) => parseFloat(a) - parseFloat(b));
+  fs.writeFileSync(FIRMWARES_FILE, JSON.stringify(sorted, null, 2), "utf8");
+}
+
 // API Routes
+app.get("/api/firmwares", (req, res) => {
+  res.json(getFirmwares());
+});
+
+app.post("/api/firmwares", (req, res) => {
+  const { value } = req.body;
+  if (!value || typeof value !== "string") {
+    return res.status(400).json({ error: "Missing or invalid firmware value" });
+  }
+  const numVal = parseFloat(value);
+  if (isNaN(numVal)) {
+    return res.status(400).json({ error: "Firmware value must be a valid number" });
+  }
+  const formatted = numVal.toFixed(2);
+  const list = getFirmwares();
+  if (list.includes(formatted)) {
+    return res.status(400).json({ error: "Firmware version already exists" });
+  }
+  list.push(formatted);
+  saveFirmwares(list);
+  res.json({ success: true, data: formatted, list: getFirmwares() });
+});
+
+app.delete("/api/firmwares/:value", (req, res) => {
+  const { value } = req.params;
+  const list = getFirmwares();
+  const targetFloat = parseFloat(value);
+  if (isNaN(targetFloat)) {
+    return res.status(400).json({ error: "Invalid firmware version parameter" });
+  }
+  const filtered = list.filter(item => parseFloat(item) !== targetFloat);
+  if (list.length === filtered.length) {
+    return res.status(404).json({ error: "Firmware version not found" });
+  }
+  saveFirmwares(filtered);
+  res.json({ success: true, deleted: value, list: filtered });
+});
+
 app.get("/api/tutorials", (req, res) => {
   res.json(getTutorials());
 });

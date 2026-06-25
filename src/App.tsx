@@ -69,6 +69,30 @@ export default function App() {
   const [editingTutorial, setEditingTutorial] = useState<Partial<Tutorial> | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
 
+  // Dynamic Firmware States & API interactions
+  const [firmwareValues, setFirmwareValues] = useState<string[]>([
+    "1.00", "1.76", "2.00", "3.00", "3.10", "3.20", "3.21", "4.00", "4.03", "4.50", "4.51", 
+    "5.00", "5.05", "5.50", "6.00", "6.72", "7.00", "7.02", "7.50", "7.55", "7.61", "8.00", 
+    "8.20", "9.00", "9.03", "9.04", "9.60", "10.00", "10.01", "10.50", "10.70", "10.71", 
+    "11.00", "11.02", "11.50", "11.52", "12.00"
+  ]);
+  const [newFirmwareVal, setNewFirmwareVal] = useState("");
+  const [isAddingFw, setIsAddingFw] = useState(false);
+
+  const fetchFirmwares = async () => {
+    try {
+      const res = await fetch("/api/firmwares");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setFirmwareValues(data);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch firmwares:", e);
+    }
+  };
+
   // Load tutorials from actual server API database or Supabase
   const fetchTutorials = async () => {
     setLoading(true);
@@ -289,6 +313,7 @@ export default function App() {
 
   useEffect(() => {
     fetchTutorials();
+    fetchFirmwares();
   }, []);
 
   // Reset selected video index when navigation states change
@@ -296,13 +321,8 @@ export default function App() {
     setSelectedVideoIndex(0);
   }, [currentStep, firmwareInput, consoleGen, model]);
 
-  // Comprehensive list of PlayStation system firmware milestones (1.00 - 12.00)
-  const FIRMWARE_VALUES = [
-    "1.00", "1.76", "2.00", "3.00", "3.10", "3.20", "3.21", "4.00", "4.03", "4.50", "4.51", 
-    "5.00", "5.05", "5.50", "6.00", "6.72", "7.00", "7.02", "7.50", "7.55", "7.61", "8.00", 
-    "8.20", "9.00", "9.03", "9.04", "9.60", "10.00", "10.01", "10.50", "10.70", "10.71", 
-    "11.00", "11.02", "11.50", "11.52", "12.00"
-  ];
+  // Dynamic list of PlayStation system firmware milestones
+  const FIRMWARE_VALUES = firmwareValues;
 
   // Parse any stored youtubeId value to check if it's a multiple video array JSON
   const parseTutorialVideos = (youtubeIdValue: string, tutorialName: string, minFw: number, maxFw: number) => {
@@ -462,6 +482,66 @@ export default function App() {
       }
     } else {
       setAdminAuthError("Invalid Administrator Passcode. Please try again.");
+    }
+  };
+
+  // Add a new firmware milestone version
+  const handleAddFirmware = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFirmwareVal) return;
+    const num = parseFloat(newFirmwareVal);
+    if (isNaN(num)) {
+      toast.error("Please enter a valid decimal number (e.g. 11.50)");
+      return;
+    }
+    const formatted = num.toFixed(2);
+    if (firmwareValues.includes(formatted)) {
+      toast.warning("Firmware version already exists!");
+      return;
+    }
+
+    setIsAddingFw(true);
+    try {
+      const res = await fetch("/api/firmwares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: formatted }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFirmwareValues(data.list);
+        setNewFirmwareVal("");
+        toast.success(`Firmware v${formatted} added successfully!`);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to add firmware");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to communicate with server");
+    } finally {
+      setIsAddingFw(false);
+    }
+  };
+
+  // Delete a firmware milestone version
+  const handleDeleteFirmware = async (val: string) => {
+    if (!window.confirm(`Are you sure you want to delete firmware v${val}? This will remove it from all dropdown selection options.`)) return;
+    try {
+      const res = await fetch(`/api/firmwares/${val}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFirmwareValues(data.list);
+        toast.success(`Firmware v${val} deleted successfully!`);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to delete firmware");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete firmware from server");
     }
   };
 
@@ -791,73 +871,129 @@ export default function App() {
             ) : (
               /* IF AUTHENTICATED ADMIN PANEL */
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch">
-                
-                {/* Left Side: Tutorial selector list */}
-                <div className="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col max-h-[620px]">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-mono text-xs uppercase tracking-wider text-indigo-600 font-bold flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5" />
-                      Tutorials List ({tutorials.length})
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setIsCreatingNew(true);
-                        setEditingTutorial({
-                          id: `ps5-jailbreak-${Date.now().toString().slice(-4)}`,
-                          name: "New PS5 Jailbreak Tutorial",
-                          minFirmware: 1.00,
-                          maxFirmware: 12.00,
-                          ps5Model: "both",
-                          status: "New Method",
-                          difficulty: "Medium",
-                          youtubeId: "",
-                          description: "",
-                          requirements: ["A PS5 console", "High-speed Internet"],
-                          steps: ["Ensure updates are turned off.", "Set up your environment."]
-                        });
-                      }}
-                      className="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>Add New</span>
-                    </button>
+                               {/* Left Side: Tutorial selector list & Firmware Manager */}
+                <div className="lg:col-span-4 flex flex-col space-y-6">
+                  {/* Tutorial Selector List */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col h-[320px]">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-mono text-xs uppercase tracking-wider text-indigo-600 font-bold flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5" />
+                        Tutorials List ({tutorials.length})
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setIsCreatingNew(true);
+                          setEditingTutorial({
+                            id: `ps5-jailbreak-${Date.now().toString().slice(-4)}`,
+                            name: "New PS5 Jailbreak Tutorial",
+                            minFirmware: 1.00,
+                            maxFirmware: 12.00,
+                            ps5Model: "both",
+                            status: "New Method",
+                            difficulty: "Medium",
+                            youtubeId: "",
+                            description: "",
+                            requirements: ["A PS5 console", "High-speed Internet"],
+                            steps: ["Ensure updates are turned off.", "Set up your environment."]
+                          });
+                        }}
+                        className="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>Add New</span>
+                      </button>
+                    </div>
+
+                    <div className="overflow-y-auto space-y-2 flex-1 pr-1 no-scrollbar">
+                      {tutorials.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setEditingTutorial({ ...item });
+                            setIsCreatingNew(false);
+                          }}
+                          className={`p-3 rounded-lg border text-left cursor-pointer transition-all ${
+                            editingTutorial?.id === item.id && !isCreatingNew
+                              ? "bg-indigo-50/70 border-indigo-500 text-slate-900 shadow-xs"
+                              : "bg-white border-slate-200 hover:bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-[10px] font-mono text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                              {item.ps5Model === 'both' ? 'All Models' : item.ps5Model === 'digital' ? 'Digital Only' : 'Disk Only'}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500">
+                              FW {item.minFirmware.toFixed(2)} - {item.maxFirmware.toFixed(2)}
+                            </span>
+                          </div>
+                          <h4 className="font-semibold text-xs text-slate-900 truncate">{item.name}</h4>
+                          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                            <span className="text-amber-600">Difficulty: {item.difficulty}</span>
+                            <span className="text-slate-400">ID: {item.id}</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {tutorials.length === 0 && (
+                        <div className="text-center py-12 text-slate-400 text-xs">
+                          No tutorials currently in database. Click 'Add New' to insert.
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="overflow-y-auto space-y-2 flex-1 pr-1 no-scrollbar">
-                    {tutorials.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => {
-                          setEditingTutorial({ ...item });
-                          setIsCreatingNew(false);
-                        }}
-                        className={`p-3 rounded-lg border text-left cursor-pointer transition-all ${
-                          editingTutorial?.id === item.id && !isCreatingNew
-                            ? "bg-indigo-50/70 border-indigo-500 text-slate-900 shadow-xs"
-                            : "bg-white border-slate-200 hover:bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-[10px] font-mono text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                            {item.ps5Model === 'both' ? 'All Models' : item.ps5Model === 'digital' ? 'Digital Only' : 'Disk Only'}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-500">
-                            FW {item.minFirmware.toFixed(2)} - {item.maxFirmware.toFixed(2)}
-                          </span>
-                        </div>
-                        <h4 className="font-semibold text-xs text-slate-900 truncate">{item.name}</h4>
-                        <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 text-[10px] text-slate-500">
-                          <span className="text-amber-600">Difficulty: {item.difficulty}</span>
-                          <span className="text-slate-400">ID: {item.id}</span>
-                        </div>
-                      </div>
-                    ))}
+                  {/* Firmware Versions Manager Section */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col space-y-3">
+                    <h3 className="font-mono text-xs uppercase tracking-wider text-indigo-600 font-bold flex items-center gap-1.5">
+                      <Settings className="h-3.5 w-3.5" />
+                      Manage Firmware Presets ({firmwareValues.length})
+                    </h3>
+                    <p className="text-[10px] text-slate-500 leading-normal">
+                      Add custom firmware milestone versions or delete outdated ones. Changes apply to all selects immediately.
+                    </p>
 
-                    {tutorials.length === 0 && (
-                      <div className="text-center py-12 text-slate-400 text-xs">
-                        No tutorials currently in database. Click 'Add New' to insert.
-                      </div>
-                    )}
+                    {/* Add new firmware inline form */}
+                    <form onSubmit={handleAddFirmware} className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={newFirmwareVal}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/[^0-9.]/g, '');
+                          setNewFirmwareVal(clean);
+                        }}
+                        placeholder="e.g. 11.50"
+                        className="flex-1 bg-white border border-slate-200 focus:border-indigo-500 rounded px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none font-mono font-semibold"
+                        required
+                        disabled={isAddingFw}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isAddingFw || !newFirmwareVal}
+                        className="text-xs font-mono font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white px-3 py-1.5 rounded flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        {isAddingFw ? "Adding..." : "Add"}
+                      </button>
+                    </form>
+
+                    {/* Firmwares Tag List */}
+                    <div className="overflow-y-auto max-h-[140px] border border-slate-200/80 bg-white rounded-lg p-2.5 space-y-1.5 no-scrollbar">
+                      {firmwareValues.map((fw) => (
+                        <div key={fw} className="flex items-center justify-between text-xs font-mono bg-slate-50 border border-slate-100 rounded px-2 py-1 text-slate-700">
+                          <span className="font-semibold">v{fw}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFirmware(fw)}
+                            className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer"
+                            title={`Delete firmware v${fw}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      {firmwareValues.length === 0 && (
+                        <p className="text-[10px] text-slate-400 italic text-center py-2">No custom firmwares found.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1346,8 +1482,9 @@ export default function App() {
                         <button
                           onClick={() => {
                             setConsoleGen('ps4');
-                            setModel(null); // Let them choose their sub-model Fat/Slim/Pro
+                            setModel('both'); // Default model to skip choosing fat/slim/pro
                             setFirmwareInput("9.00");
+                            setCurrentStep(2); // Go directly to Step 2
                           }}
                           className="group relative bg-slate-50 border border-slate-200 hover:border-indigo-500 hover:bg-slate-100/30 rounded-2xl p-4 text-left transition-all overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-lg hover:shadow-indigo-500/5 duration-300 cursor-pointer"
                         >
@@ -1359,9 +1496,6 @@ export default function App() {
                               referrerPolicy="no-referrer"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider font-semibold">
-                              Firmwares ≤ 11.00
-                            </span>
                           </div>
                           
                           <div>
@@ -1396,9 +1530,6 @@ export default function App() {
                               referrerPolicy="no-referrer"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-rose-600 text-white px-2 py-0.5 rounded uppercase tracking-wider font-semibold">
-                              Firmwares ≤ 4.51
-                            </span>
                           </div>
                           
                           <div>
@@ -1620,11 +1751,16 @@ export default function App() {
                 <div className="space-y-6 flex-1 flex flex-col justify-center animate-fade-in">
                   <div className="text-center">
                     <button 
-                      onClick={() => setCurrentStep(1)}
+                      onClick={() => {
+                        if (consoleGen === 'ps4') {
+                          setConsoleGen(null);
+                        }
+                        setCurrentStep(1);
+                      }}
                       className="text-xs text-indigo-600 hover:text-indigo-700 inline-flex items-center space-x-1 mb-2 font-mono cursor-pointer"
                     >
                       <ArrowLeft className="h-3 w-3" />
-                      <span>Back to Model Selection ({consoleGen === 'ps4' ? 'PS4' : 'PS5'} {model ? model.charAt(0).toUpperCase() + model.slice(1) : ''})</span>
+                      <span>Back to {consoleGen === 'ps4' ? 'Console' : 'Model'} Selection</span>
                     </button>
                     <h3 className="text-lg font-display font-bold text-slate-900">
                       Enter Your System Firmware Version
