@@ -28,6 +28,13 @@ import {
   Info
 } from 'lucide-react';
 import { Tutorial, PS5ModelType } from './types';
+import { 
+  isSupabaseConfigured, 
+  getSupabaseTutorials, 
+  upsertSupabaseTutorial, 
+  deleteSupabaseTutorial, 
+  getSupabaseSQLScript 
+} from './lib/supabase';
 
 export default function App() {
   // Wizard States
@@ -41,6 +48,7 @@ export default function App() {
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSqlGuide, setShowSqlGuide] = useState<boolean>(false);
 
   // Admin Mode States
   const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
@@ -52,20 +60,52 @@ export default function App() {
   const [editingTutorial, setEditingTutorial] = useState<Partial<Tutorial> | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
 
-  // Load tutorials from actual server API database
+  // Load tutorials from actual server API database or Supabase
   const fetchTutorials = async () => {
     setLoading(true);
     try {
+      if (isSupabaseConfigured) {
+        const data = await getSupabaseTutorials();
+        if (data) {
+          setTutorials(data);
+          setErrorMessage(null);
+          return;
+        }
+      }
+
+      // Local API server fallback
       const response = await fetch('/api/tutorials');
-      if (!response.ok) throw new Error('Failed to load tutorials database');
-      const data = await response.json();
-      setTutorials(data);
-      setErrorMessage(null);
+      if (response.ok) {
+        const data = await response.json();
+        setTutorials(data);
+        setErrorMessage(null);
+        // Cache to localStorage for offline mode
+        localStorage.setItem('ps5-jailbreak-tutorials', JSON.stringify(data));
+        return;
+      }
+      throw new Error('Local API server failed');
     } catch (err: any) {
       console.error(err);
-      setErrorMessage("Could not load latest tutorials from server. Using local backup.");
-      // Fallback
-      setTutorials([
+      
+      // Try to load from localStorage first as offline fallback, otherwise use defaults
+      const localCached = localStorage.getItem('ps5-jailbreak-tutorials');
+      if (localCached) {
+        try {
+          const parsed = JSON.parse(localCached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTutorials(parsed);
+            setErrorMessage("Offline Mode: Loaded from local browser cache.");
+            return;
+          }
+        } catch (e) {}
+      }
+
+      setErrorMessage(isSupabaseConfigured 
+        ? "Could not load tutorials from Supabase. Make sure your database table exists." 
+        : "Running in offline fallback. Setup Supabase for live database updates.");
+      
+      // Default fallback values
+      const defaultData: Tutorial[] = [
         {
           id: "ps5-umtx-kernel",
           name: "PS5 Kernel Exploit (UMTX / BD-JB / Webkit)",
@@ -75,11 +115,75 @@ export default function App() {
           status: "Stable",
           difficulty: "Medium",
           youtubeId: "b-hWeq-G99s",
-          description: "A full kernel exploit for firmwares 1.00 through 4.51. It uses a Webkit vulnerability (or the Blu-ray Disc Java exploit on Disc consoles) combined with the UMTX kernel exploit.",
-          requirements: ["PS5 on firmware 4.51 or lower", "A PC or phone connected to same network", "An exFAT USB drive"],
-          steps: ["Navigate to Network > Settings", "Set DNS to Manual Primary 192.241.116.141", "Open User's Guide to run the exploit"]
+          description: "A full kernel exploit for firmwares 1.00 through 4.51. It uses a Webkit vulnerability (or the Blu-ray Disc Java exploit on Disc consoles) combined with the UMTX kernel exploit to enable homebrew, custom settings, and backups.",
+          requirements: [
+            "A PS5 on firmware 4.51 or lower",
+            "A PC or phone connected to the same local Wi-Fi network",
+            "For Disc version: A rewritable Blu-ray Disc (BD-RE) and BD Writer (Optional)",
+            "An exFAT formatted USB drive (for homebrew)"
+          ],
+          steps: [
+            "Navigate to PS5 Settings > Network > Settings > Set Up Internet Connection.",
+            "Highlight your Wi-Fi/LAN connection, press the Options button, and select Advanced Settings.",
+            "Set DNS Settings to 'Manual'. Set Primary DNS to '192.241.116.141' or '62.210.38.117' (this blocks Sony updates and redirects the User's Guide to the host site).",
+            "Go back, restart your console, then go to Settings > User's Guide, Safety, and Warranty > User's Guide.",
+            "The jailbreak host page will load. Select the exploit corresponding to your firmware (e.g., 4.03, 4.50, 4.51) and launch it.",
+            "If you are on a Disc console and using BD-JB, insert your burned Blu-ray disc with the payload instead.",
+            "Wait for the exploit to display 'Success! Payload loaded'. The web page will execute kernel exploits and unlock the Debug Settings menu.",
+            "Go to PS5 Settings > Debug Settings to install homebrew package (.pkg) files and load your backups!"
+          ]
+        },
+        {
+          id: "ps5-mast1c0re",
+          name: "Mast1c0re PS4 Emulator Exploit",
+          minFirmware: 4.52,
+          maxFirmware: 7.61,
+          ps5Model: "both",
+          status: "Alternative Method",
+          difficulty: "Hard",
+          youtubeId: "eO2ZqLgLreE",
+          description: "An exploit targeting the PS5's built-in PS4 emulator using save game vulnerabilities. It does not provide full PS5 kernel access, but allows running PS4 homebrew, ISO backups, and retro emulators.",
+          requirements: [
+            "PS5 running firmware between 4.52 and 7.61",
+            "A legitimate copy of the PS4 game 'Okage: Shadow King' purchased on your PSN account",
+            "A PC or mobile device to send game save files",
+            "An active internet connection on the same network"
+          ],
+          steps: [
+            "Buy and download 'Okage: Shadow King' from the PlayStation Store onto your PS5.",
+            "Download the mast1c0re save game exploit files on your PC from GitHub.",
+            "Use an exploit save transfer tool (like mast1c0re-file-sender) to copy the modified Okage game save files onto a USB drive, or transfer via PS Plus cloud saves.",
+            "Load the game on your PS5, restore the exploit save game, and open the save file within the game.",
+            "The game will crash and boot the mast1c0re loader. A black/blue screen will appear waiting for payloads.",
+            "Use your PC to send the PS4 homebrew .elf or PS4 game backup to the PS5's IP address on port 9020.",
+            "Enjoy running PS4 homebrew and classic emulator games directly on your PS5!"
+          ]
+        },
+        {
+          id: "ps5-no-jailbreak",
+          name: "No Public Jailbreak Available (Stay & Block Updates)",
+          minFirmware: 7.62,
+          maxFirmware: 12.00,
+          ps5Model: "both",
+          status: "No Jailbreak",
+          difficulty: "None",
+          youtubeId: "8zD6H5K7P-Q",
+          description: "There is currently no public kernel exploit or jailbreak for PS5 consoles on firmware 7.62 or higher. The golden rule of PlayStation hacking is: STAY on the lowest possible firmware and NEVER update your console.",
+          requirements: [
+            "A PS5 on firmware 7.62 or above",
+            "A firm commitment to not updating your system!",
+            "Automatic software updates disabled in settings"
+          ],
+          steps: [
+            "Immediately disable automatic updates: Go to Settings > System > System Software > System Software Update and Settings.",
+            "Turn off 'Download Update Files Automatically' and 'Install Update Files Automatically'.",
+            "To completely prevent accidental updates, consider setting up a custom DNS (e.g., Al Azif's DNS) to block Sony servers entirely.",
+            "Wait patiently. Modern exploit chains require time, and hackers are actively researching newer firmwares. Your current firmware is your best chance for a future hack!"
+          ]
         }
-      ]);
+      ];
+      setTutorials(defaultData);
+      localStorage.setItem('ps5-jailbreak-tutorials', JSON.stringify(defaultData));
     } finally {
       setLoading(false);
     }
@@ -167,7 +271,7 @@ export default function App() {
     }
   };
 
-  // Save/Update tutorial on actual JSON server
+  // Save/Update tutorial
   const handleSaveTutorial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTutorial) return;
@@ -178,53 +282,123 @@ export default function App() {
       return;
     }
 
+    // Convert requirements and steps to lists if string
+    const formatList = (val: any): string[] => {
+      if (Array.isArray(val)) return val.filter(Boolean);
+      if (typeof val === 'string') {
+        return val.split('\n').map(l => l.trim()).filter(Boolean);
+      }
+      return [];
+    };
+
+    const formattedTutorial = {
+      ...editingTutorial,
+      minFirmware: Number(editingTutorial.minFirmware || 1.00),
+      maxFirmware: Number(editingTutorial.maxFirmware || 12.00),
+      youtubeId: extractYoutubeId(editingTutorial.youtubeId || ""),
+      requirements: formatList(editingTutorial.requirements),
+      steps: formatList(editingTutorial.steps)
+    } as Tutorial;
+
     try {
-      const formattedTutorial = {
-        ...editingTutorial,
-        minFirmware: Number(editingTutorial.minFirmware || 1.00),
-        maxFirmware: Number(editingTutorial.maxFirmware || 12.00),
-        youtubeId: extractYoutubeId(editingTutorial.youtubeId || "")
-      };
+      if (isSupabaseConfigured) {
+        const saved = await upsertSupabaseTutorial(formattedTutorial);
+        if (saved) {
+          await fetchTutorials();
+          setIsCreatingNew(false);
+          setEditingTutorial(saved);
+          alert("Tutorial successfully saved to Supabase cloud database!");
+          return;
+        }
+      }
 
-      const response = await fetch('/api/tutorials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formattedTutorial)
-      });
+      // Try local server API first
+      try {
+        const response = await fetch('/api/tutorials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formattedTutorial)
+        });
 
-      if (!response.ok) throw new Error('Server error updating tutorial database');
+        if (response.ok) {
+          const result = await response.json();
+          await fetchTutorials();
+          setIsCreatingNew(false);
+          setEditingTutorial(result.data);
+          alert("Tutorial database updated on local server successfully!");
+          return;
+        }
+      } catch (srvErr) {
+        console.warn("Express API failed, saving to browser cache instead.", srvErr);
+      }
 
-      const result = await response.json();
-      
-      // Update list
-      await fetchTutorials();
+      // Offline storage fallback
+      const currentList = [...tutorials];
+      const existingIdx = currentList.findIndex(t => t.id === formattedTutorial.id);
+      if (existingIdx > -1) {
+        currentList[existingIdx] = formattedTutorial;
+      } else {
+        currentList.push(formattedTutorial);
+      }
+      setTutorials(currentList);
+      localStorage.setItem('ps5-jailbreak-tutorials', JSON.stringify(currentList));
       setIsCreatingNew(false);
-      // Select the newly updated/created tutorial
-      setEditingTutorial(result.data);
-      alert("Tutorial database updated successfully!");
+      setEditingTutorial(formattedTutorial);
+      alert("Notice: Running in Offline Mode. Tutorial saved to local browser cache. Connect Supabase to persist changes globally!");
     } catch (err: any) {
       alert(`Error saving tutorial: ${err.message}`);
     }
   };
 
-  // Delete tutorial from actual server
+  // Delete tutorial
   const handleDeleteTutorial = async (id: string) => {
     if (!confirm("Are you sure you want to delete this tutorial from the database?")) return;
 
     try {
-      const response = await fetch(`/api/tutorials/${id}`, {
-        method: 'DELETE'
-      });
+      if (isSupabaseConfigured) {
+        const success = await deleteSupabaseTutorial(id);
+        if (success) {
+          await fetchTutorials();
+          if (tutorials.length > 0) {
+            setEditingTutorial({ ...tutorials[0] });
+          } else {
+            setEditingTutorial(null);
+          }
+          alert("Tutorial deleted from Supabase database.");
+          return;
+        }
+      }
 
-      if (!response.ok) throw new Error('Failed to delete from server database');
+      // Try local server
+      try {
+        const response = await fetch(`/api/tutorials/${id}`, {
+          method: 'DELETE'
+        });
 
-      await fetchTutorials();
-      if (tutorials.length > 0) {
-        setEditingTutorial({ ...tutorials[0] });
+        if (response.ok) {
+          await fetchTutorials();
+          if (tutorials.length > 0) {
+            setEditingTutorial({ ...tutorials[0] });
+          } else {
+            setEditingTutorial(null);
+          }
+          alert("Tutorial deleted from local server database.");
+          return;
+        }
+      } catch (srvErr) {
+        console.warn("Express server unavailable, removing from browser cache.", srvErr);
+      }
+
+      // LocalStorage fallback
+      const filtered = tutorials.filter(t => t.id !== id);
+      setTutorials(filtered);
+      localStorage.setItem('ps5-jailbreak-tutorials', JSON.stringify(filtered));
+      if (filtered.length > 0) {
+        setEditingTutorial({ ...filtered[0] });
       } else {
         setEditingTutorial(null);
       }
-      alert("Tutorial removed from database.");
+      alert("Tutorial removed from offline browser cache.");
     } catch (err: any) {
       alert(`Error deleting: ${err.message}`);
     }
@@ -325,11 +499,59 @@ export default function App() {
                   Add, edit and format tailored guides and update corresponding YouTube instructional clips seamlessly.
                 </p>
               </div>
-              <div className="mt-2 md:mt-0">
+              <div className="mt-2 md:mt-0 flex flex-col items-end gap-1">
                 <span className="text-xs bg-slate-50 px-3 py-1 rounded border border-slate-200 font-mono text-slate-600">
-                  Storage Status: <span className="text-amber-600 font-bold">Local Server Database Connected</span>
+                  Storage Status: {
+                    isSupabaseConfigured ? (
+                      <span className="text-emerald-600 font-bold">Supabase Cloud Connected</span>
+                    ) : errorMessage?.includes("Offline Mode") ? (
+                      <span className="text-amber-600 font-bold">Offline Browser Cache</span>
+                    ) : (
+                      <span className="text-indigo-600 font-bold">Local JSON Server</span>
+                    )
+                  }
                 </span>
               </div>
+            </div>
+
+            {/* Supabase SQL Setup and configuration guide */}
+            <div className="mb-6 p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs text-indigo-950">
+              <div className="flex items-start space-x-3">
+                <Sparkles className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-indigo-900">
+                    {isSupabaseConfigured 
+                      ? "✓ Supabase Cloud Connection Active" 
+                      : "Connect to Supabase Cloud Database to resolve Vercel 404 errors!"}
+                  </p>
+                  <p className="text-slate-600 leading-relaxed">
+                    {isSupabaseConfigured 
+                      ? "Your PS5 Jailbreak Wizard is connected directly to your Supabase instance. Edits and guides will reflect instantly across all deployments (including Vercel, Netlify, or Cloud Run)." 
+                      : "Because static environments (like Vercel) are serverless and cannot write to local files, you need a cloud database. We support Supabase! Simply configure your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY variables in your Vercel Dashboard, then use the SQL Script below to create your tables."}
+                  </p>
+                  <button 
+                    onClick={() => setShowSqlGuide(!showSqlGuide)}
+                    className="mt-2 inline-flex items-center space-x-1.5 font-mono font-bold text-indigo-600 hover:text-indigo-700 hover:underline animate-pulse"
+                  >
+                    <span>{showSqlGuide ? "Hide SQL Setup Script" : "Show Supabase SQL Setup Script (Copy & Run)"}</span>
+                    <ChevronRight className={`h-3 w-3 transition-transform ${showSqlGuide ? 'rotate-90' : ''}`} />
+                  </button>
+                </div>
+              </div>
+              {showSqlGuide && (
+                <div className="mt-3 p-3 bg-slate-900 rounded-lg border border-slate-800 text-left font-mono text-[10px] text-slate-300 relative">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(getSupabaseSQLScript());
+                      alert("Supabase table SQL setup script copied to clipboard!");
+                    }}
+                    className="absolute top-2 right-2 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-[10px] text-white rounded font-sans font-medium transition-all shadow-sm"
+                  >
+                    Copy SQL Script
+                  </button>
+                  <pre className="overflow-x-auto max-h-[220px] no-scrollbar whitespace-pre">{getSupabaseSQLScript()}</pre>
+                </div>
+              )}
             </div>
 
             {/* IF NOT AUTHENTICATED */}
