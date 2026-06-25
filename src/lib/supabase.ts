@@ -1,8 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { Tutorial } from '../types';
 
-const supabaseUrl = (((import.meta as any).env?.VITE_SUPABASE_URL) || '').trim();
-const supabaseAnonKey = (((import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || '').trim();
+let rawSupabaseUrl = (((import.meta as any).env?.VITE_SUPABASE_URL) || '').trim();
+let rawSupabaseAnonKey = (((import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || '').trim();
+
+// Defensive clean: strip any trailing slash or '/rest/v1' added during copy-paste from settings
+if (rawSupabaseUrl.endsWith('/')) {
+  rawSupabaseUrl = rawSupabaseUrl.slice(0, -1);
+}
+if (rawSupabaseUrl.endsWith('/rest/v1')) {
+  rawSupabaseUrl = rawSupabaseUrl.substring(0, rawSupabaseUrl.length - 8);
+}
+
+const supabaseUrl = rawSupabaseUrl.trim();
+const supabaseAnonKey = rawSupabaseAnonKey.trim();
 
 // Check if Supabase keys exist and are not empty placeholders
 export const isSupabaseConfigured = !!(
