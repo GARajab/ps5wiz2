@@ -1,0 +1,6 @@
+{
+  "name": "PS5 Jailbreak Guide Wizard",
+  "description": "An interactive wizard to check PS5 jailbreak compatibility, view tailored tutorials, watch guide videos, and edit tutorials via an admin console.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
