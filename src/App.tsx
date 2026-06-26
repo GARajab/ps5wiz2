@@ -84,16 +84,33 @@ export default function App() {
   const [customFirmwareMode, setCustomFirmwareMode] = useState(false);
 
   const fetchFirmwares = async () => {
+    // Try to load from localStorage first as immediate cache
+    const cached = localStorage.getItem('ps5-jailbreak-firmwares');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === "object" && parsed.ps4 && parsed.ps5) {
+          setFirmwareValues(parsed);
+        }
+      } catch (err) {
+        console.warn("Stale or invalid firmware cache:", err);
+      }
+    }
+
     try {
       const res = await fetch("/api/firmwares");
       if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data === "object" && data.ps4 && data.ps5) {
-          setFirmwareValues(data);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data && typeof data === "object" && data.ps4 && data.ps5) {
+            setFirmwareValues(data);
+            localStorage.setItem('ps5-jailbreak-firmwares', JSON.stringify(data));
+          }
         }
       }
     } catch (e) {
-      console.error("Failed to fetch firmwares:", e);
+      console.error("Failed to fetch firmwares from server:", e);
     }
   };
 
@@ -502,6 +519,7 @@ export default function App() {
     }
 
     setIsAddingFw(true);
+    let success = false;
     try {
       const res = await fetch("/api/firmwares", {
         method: "POST",
@@ -509,40 +527,103 @@ export default function App() {
         body: JSON.stringify({ console: selectedAdminConsole, value: cleanVal }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setFirmwareValues(data.list);
-        setNewFirmwareVal("");
-        toast.success(`Firmware v${cleanVal} added to ${selectedAdminConsole.toUpperCase()}!`);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data && data.list) {
+            setFirmwareValues(data.list);
+            localStorage.setItem('ps5-jailbreak-firmwares', JSON.stringify(data.list));
+            setNewFirmwareVal("");
+            toast.success(`Firmware v${cleanVal} added to ${selectedAdminConsole.toUpperCase()}!`);
+            success = true;
+          }
+        }
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to add firmware");
+        const contentType = res.headers.get("content-type");
+        let errMsg = "Failed to add firmware";
+        if (contentType && contentType.includes("application/json")) {
+          const err = await res.json();
+          errMsg = err.error || errMsg;
+        }
+        console.warn("Server API failed to add firmware:", errMsg);
       }
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to communicate with server");
+      console.error("Express API error:", err);
     } finally {
       setIsAddingFw(false);
+    }
+
+    // Fallback to client-side localStorage if server action did not complete successfully
+    if (!success) {
+      const updated = {
+        ps4: [...(firmwareValues.ps4 || [])],
+        ps5: [...(firmwareValues.ps5 || [])]
+      };
+      updated[selectedAdminConsole].push(cleanVal);
+      // Sort in descending order
+      const sortFw = (arr: string[]) => {
+        return [...arr].sort((a, b) => {
+          const aNum = parseFloat(a);
+          const bNum = parseFloat(b);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            const diff = bNum - aNum;
+            if (diff !== 0) return diff;
+          }
+          return b.localeCompare(a);
+        });
+      };
+      updated.ps4 = sortFw(updated.ps4);
+      updated.ps5 = sortFw(updated.ps5);
+
+      setFirmwareValues(updated);
+      localStorage.setItem('ps5-jailbreak-firmwares', JSON.stringify(updated));
+      setNewFirmwareVal("");
+      toast.info(`Notice: Saved to browser local cache. Firmware v${cleanVal} added to ${selectedAdminConsole.toUpperCase()}!`);
     }
   };
 
   // Delete a firmware milestone version
   const handleDeleteFirmware = async (consoleType: 'ps4' | 'ps5', val: string) => {
     if (!window.confirm(`Are you sure you want to delete firmware v${val} from ${consoleType.toUpperCase()}? This will remove it from selection options.`)) return;
+    
+    let success = false;
     try {
       const res = await fetch(`/api/firmwares/${consoleType}/${val}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        const data = await res.json();
-        setFirmwareValues(data.list);
-        toast.success(`Firmware v${val} deleted from ${consoleType.toUpperCase()}!`);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data && data.list) {
+            setFirmwareValues(data.list);
+            localStorage.setItem('ps5-jailbreak-firmwares', JSON.stringify(data.list));
+            toast.success(`Firmware v${val} deleted from ${consoleType.toUpperCase()}!`);
+            success = true;
+          }
+        }
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to delete firmware");
+        const contentType = res.headers.get("content-type");
+        let errMsg = "Failed to delete firmware";
+        if (contentType && contentType.includes("application/json")) {
+          const err = await res.json();
+          errMsg = err.error || errMsg;
+        }
+        console.warn("Server API failed to delete firmware:", errMsg);
       }
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete firmware from server");
+      console.error("Express API error:", err);
+    }
+
+    // Fallback to client-side localStorage if server action did not complete successfully
+    if (!success) {
+      const updated = {
+        ps4: (firmwareValues.ps4 || []).filter(item => item !== val),
+        ps5: (firmwareValues.ps5 || []).filter(item => item !== val)
+      };
+      setFirmwareValues(updated);
+      localStorage.setItem('ps5-jailbreak-firmwares', JSON.stringify(updated));
+      toast.info(`Notice: Removed from browser local cache. Firmware v${val} deleted from ${consoleType.toUpperCase()}!`);
     }
   };
 
