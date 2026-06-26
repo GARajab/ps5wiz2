@@ -14,12 +14,14 @@ const DATA_DIR = path.join(process.cwd(), "src", "data");
 const TUTORIALS_FILE = path.join(DATA_DIR, "tutorials.json");
 const FIRMWARES_FILE = path.join(DATA_DIR, "firmwares.json");
 
-const DEFAULT_FIRMWARES = [
-  "1.00", "1.76", "2.00", "3.00", "3.10", "3.20", "3.21", "4.00", "4.03", "4.50", "4.51", 
-  "5.00", "5.05", "5.50", "6.00", "6.72", "7.00", "7.02", "7.50", "7.55", "7.61", "8.00", 
-  "8.20", "9.00", "9.03", "9.04", "9.60", "10.00", "10.01", "10.50", "10.70", "10.71", 
-  "11.00", "11.02", "11.50", "11.52", "12.00"
-];
+const DEFAULT_FIRMWARES = {
+  ps4: [
+    "13.50", "13.04", "13.02", "13.00", "12.52", "12.50", "12.02", "12.00", "11.52", "11.50", "11.02", "11.00", "10.71", "10.70", "10.50", "10.01", "10.00", "9.60", "9.51", "9.50", "9.04", "9.03", "9.00", "8.52", "8.50", "8.03", "8.01", "8.00", "7.55", "7.51", "7.50", "7.02", "7.01", "7.00", "6.72", "6.71", "6.70", "6.51", "6.50", "6.20", "6.02", "6.00", "5.56", "5.55", "5.53-01", "5.53", "5.50", "5.05", "5.03", "5.01", "5.00", "4.74", "4.73", "4.72", "4.71", "4.70", "4.55", "4.50", "4.07", "4.06", "4.05", "4.01", "4.00", "3.55", "3.50", "3.15", "3.11", "3.10", "3.00", "2.57", "2.55", "2.51", "2.50", "2.04", "2.03", "2.02", "2.01", "2.00", "1.76", "1.75", "1.74", "1.72", "1.71", "1.70", "1.62", "1.61", "1.60", "1.52", "1.51", "1.50b", "1.50", "1.07", "1.06", "1.05"
+  ],
+  ps5: [
+    "13.40.00", "13.20.00", "13.00.00", "12.60.00", "12.40.00", "12.20.00", "12.00.00", "11.60.00", "11.40.00", "11.20.00", "11.00.00", "10.60.00", "10.40.00", "10.20.00", "10.01.00", "10.00.00", "09.60.00", "09.40.00", "09.20.00", "09.00.00", "08.60.00", "08.40.00", "08.20.02", "08.20.00", "08.00.00", "07.61.00", "07.60.00", "07.40.00", "07.20.00", "07.01.01", "07.01.00", "07.00.00", "06.50.00", "06.02.00", "06.00.01", "06.00.00", "05.50.00", "05.10.00", "05.02.00", "05.00.00", "04.51.00", "04.50.00", "04.03.00", "04.02.00", "04.00.00", "03.21.00", "03.20.00", "03.10.00", "03.00.00", "02.50.00", "02.30.00", "02.26.00", "02.25.00", "02.20.00", "02.00.00", "01.14.00", "01.12.00"
+  ]
+};
 
 // Ensure data folder and default file exist
 function ensureDatabase() {
@@ -134,20 +136,47 @@ function saveTutorials(data: any[]) {
   fs.writeFileSync(TUTORIALS_FILE, JSON.stringify(data, null, 2), "utf8");
 }
 
-function getFirmwares(): string[] {
+interface FirmwaresDB {
+  ps4: string[];
+  ps5: string[];
+}
+
+function getFirmwares(): FirmwaresDB {
   ensureDatabase();
   try {
     const raw = fs.readFileSync(FIRMWARES_FILE, "utf8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Auto-migrate if old database format (or flat array) is detected
+    if (!parsed || Array.isArray(parsed) || !parsed.ps4 || !parsed.ps5) {
+      saveFirmwares(DEFAULT_FIRMWARES);
+      return DEFAULT_FIRMWARES;
+    }
+    return parsed;
   } catch (err) {
     console.error("Error reading firmwares database:", err);
     return DEFAULT_FIRMWARES;
   }
 }
 
-function saveFirmwares(data: string[]) {
+function saveFirmwares(data: FirmwaresDB) {
   ensureDatabase();
-  const sorted = [...data].sort((a, b) => parseFloat(a) - parseFloat(b));
+  const sortFw = (list: string[]) => {
+    return [...list].sort((a, b) => {
+      // Numerical comparison (treating versions cleanly if possible)
+      const aNum = parseFloat(a);
+      const bNum = parseFloat(b);
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        const diff = bNum - aNum; // Descending order
+        if (diff !== 0) return diff;
+      }
+      return b.localeCompare(a); // Standard string desc fallback
+    });
+  };
+
+  const sorted: FirmwaresDB = {
+    ps4: sortFw(data.ps4 || []),
+    ps5: sortFw(data.ps5 || [])
+  };
   fs.writeFileSync(FIRMWARES_FILE, JSON.stringify(sorted, null, 2), "utf8");
 }
 
@@ -157,37 +186,38 @@ app.get("/api/firmwares", (req, res) => {
 });
 
 app.post("/api/firmwares", (req, res) => {
-  const { value } = req.body;
-  if (!value || typeof value !== "string") {
+  const { console: consoleType, value } = req.body;
+  if (!value || typeof value !== "string" || !value.trim()) {
     return res.status(400).json({ error: "Missing or invalid firmware value" });
   }
-  const numVal = parseFloat(value);
-  if (isNaN(numVal)) {
-    return res.status(400).json({ error: "Firmware value must be a valid number" });
+  if (consoleType !== "ps4" && consoleType !== "ps5") {
+    return res.status(400).json({ error: "Console type must be 'ps4' or 'ps5'" });
   }
-  const formatted = numVal.toFixed(2);
-  const list = getFirmwares();
-  if (list.includes(formatted)) {
+  const db = getFirmwares();
+  const list = db[consoleType] || [];
+  if (list.includes(value.trim())) {
     return res.status(400).json({ error: "Firmware version already exists" });
   }
-  list.push(formatted);
-  saveFirmwares(list);
-  res.json({ success: true, data: formatted, list: getFirmwares() });
+  list.push(value.trim());
+  db[consoleType] = list;
+  saveFirmwares(db);
+  res.json({ success: true, data: value.trim(), list: getFirmwares() });
 });
 
-app.delete("/api/firmwares/:value", (req, res) => {
-  const { value } = req.params;
-  const list = getFirmwares();
-  const targetFloat = parseFloat(value);
-  if (isNaN(targetFloat)) {
-    return res.status(400).json({ error: "Invalid firmware version parameter" });
+app.delete("/api/firmwares/:console/:value", (req, res) => {
+  const { console: consoleType, value } = req.params;
+  if (consoleType !== "ps4" && consoleType !== "ps5") {
+    return res.status(400).json({ error: "Console type must be 'ps4' or 'ps5'" });
   }
-  const filtered = list.filter(item => parseFloat(item) !== targetFloat);
+  const db = getFirmwares();
+  const list = db[consoleType] || [];
+  const filtered = list.filter(item => item !== value);
   if (list.length === filtered.length) {
     return res.status(404).json({ error: "Firmware version not found" });
   }
-  saveFirmwares(filtered);
-  res.json({ success: true, deleted: value, list: filtered });
+  db[consoleType] = filtered;
+  saveFirmwares(db);
+  res.json({ success: true, deleted: value, list: getFirmwares() });
 });
 
 app.get("/api/tutorials", (req, res) => {

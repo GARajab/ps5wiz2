@@ -70,21 +70,25 @@ export default function App() {
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
 
   // Dynamic Firmware States & API interactions
-  const [firmwareValues, setFirmwareValues] = useState<string[]>([
-    "1.00", "1.76", "2.00", "3.00", "3.10", "3.20", "3.21", "4.00", "4.03", "4.50", "4.51", 
-    "5.00", "5.05", "5.50", "6.00", "6.72", "7.00", "7.02", "7.50", "7.55", "7.61", "8.00", 
-    "8.20", "9.00", "9.03", "9.04", "9.60", "10.00", "10.01", "10.50", "10.70", "10.71", 
-    "11.00", "11.02", "11.50", "11.52", "12.00"
-  ]);
+  const [firmwareValues, setFirmwareValues] = useState<{ ps4: string[]; ps5: string[] }>({
+    ps4: [
+      "13.50", "13.04", "13.02", "13.00", "12.52", "12.50", "12.02", "12.00", "11.52", "11.50", "11.02", "11.00", "10.71", "10.70", "10.50", "10.01", "10.00", "9.60", "9.51", "9.50", "9.04", "9.03", "9.00", "8.52", "8.50", "8.03", "8.01", "8.00", "7.55", "7.51", "7.50", "7.02", "7.01", "7.00", "6.72", "6.71", "6.70", "6.51", "6.50", "6.20", "6.02", "6.00", "5.56", "5.55", "5.53-01", "5.53", "5.50", "5.05", "5.03", "5.01", "5.00", "4.74", "4.73", "4.72", "4.71", "4.70", "4.55", "4.50", "4.07", "4.06", "4.05", "4.01", "4.00", "3.55", "3.50", "3.15", "3.11", "3.10", "3.00", "2.57", "2.55", "2.51", "2.50", "2.04", "2.03", "2.02", "2.01", "2.00", "1.76", "1.75", "1.74", "1.72", "1.71", "1.70", "1.62", "1.61", "1.60", "1.52", "1.51", "1.50b", "1.50", "1.07", "1.06", "1.05"
+    ],
+    ps5: [
+      "13.40.00", "13.20.00", "13.00.00", "12.60.00", "12.40.00", "12.20.00", "12.00.00", "11.60.00", "11.40.00", "11.20.00", "11.00.00", "10.60.00", "10.40.00", "10.20.00", "10.01.00", "10.00.00", "09.60.00", "09.40.00", "09.20.00", "09.00.00", "08.60.00", "08.40.00", "08.20.02", "08.20.00", "08.00.00", "07.61.00", "07.60.00", "07.40.00", "07.20.00", "07.01.01", "07.01.00", "07.00.00", "06.50.00", "06.02.00", "06.00.01", "06.00.00", "05.50.00", "05.10.00", "05.02.00", "05.00.00", "04.51.00", "04.50.00", "04.03.00", "04.02.00", "04.00.00", "03.21.00", "03.20.00", "03.10.00", "03.00.00", "02.50.00", "02.30.00", "02.26.00", "02.25.00", "02.20.00", "02.00.00", "01.14.00", "01.12.00"
+    ]
+  });
   const [newFirmwareVal, setNewFirmwareVal] = useState("");
+  const [selectedAdminConsole, setSelectedAdminConsole] = useState<'ps4' | 'ps5'>('ps4');
   const [isAddingFw, setIsAddingFw] = useState(false);
+  const [customFirmwareMode, setCustomFirmwareMode] = useState(false);
 
   const fetchFirmwares = async () => {
     try {
       const res = await fetch("/api/firmwares");
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
+        if (data && typeof data === "object" && data.ps4 && data.ps5) {
           setFirmwareValues(data);
         }
       }
@@ -322,7 +326,7 @@ export default function App() {
   }, [currentStep, firmwareInput, consoleGen, model]);
 
   // Dynamic list of PlayStation system firmware milestones
-  const FIRMWARE_VALUES = firmwareValues;
+  const FIRMWARE_VALUES = consoleGen === 'ps4' ? firmwareValues.ps4 : (consoleGen === 'ps5' ? firmwareValues.ps5 : [...firmwareValues.ps4, ...firmwareValues.ps5]);
 
   // Parse any stored youtubeId value to check if it's a multiple video array JSON
   const parseTutorialVideos = (youtubeIdValue: string, tutorialName: string, minFw: number, maxFw: number) => {
@@ -489,13 +493,10 @@ export default function App() {
   const handleAddFirmware = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFirmwareVal) return;
-    const num = parseFloat(newFirmwareVal);
-    if (isNaN(num)) {
-      toast.error("Please enter a valid decimal number (e.g. 11.50)");
-      return;
-    }
-    const formatted = num.toFixed(2);
-    if (firmwareValues.includes(formatted)) {
+    const cleanVal = newFirmwareVal.trim();
+    if (!cleanVal) return;
+    const list = selectedAdminConsole === 'ps4' ? firmwareValues.ps4 : firmwareValues.ps5;
+    if (list.includes(cleanVal)) {
       toast.warning("Firmware version already exists!");
       return;
     }
@@ -505,13 +506,13 @@ export default function App() {
       const res = await fetch("/api/firmwares", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: formatted }),
+        body: JSON.stringify({ console: selectedAdminConsole, value: cleanVal }),
       });
       if (res.ok) {
         const data = await res.json();
         setFirmwareValues(data.list);
         setNewFirmwareVal("");
-        toast.success(`Firmware v${formatted} added successfully!`);
+        toast.success(`Firmware v${cleanVal} added to ${selectedAdminConsole.toUpperCase()}!`);
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to add firmware");
@@ -525,16 +526,16 @@ export default function App() {
   };
 
   // Delete a firmware milestone version
-  const handleDeleteFirmware = async (val: string) => {
-    if (!window.confirm(`Are you sure you want to delete firmware v${val}? This will remove it from all dropdown selection options.`)) return;
+  const handleDeleteFirmware = async (consoleType: 'ps4' | 'ps5', val: string) => {
+    if (!window.confirm(`Are you sure you want to delete firmware v${val} from ${consoleType.toUpperCase()}? This will remove it from selection options.`)) return;
     try {
-      const res = await fetch(`/api/firmwares/${val}`, {
+      const res = await fetch(`/api/firmwares/${consoleType}/${val}`, {
         method: "DELETE",
       });
       if (res.ok) {
         const data = await res.json();
         setFirmwareValues(data.list);
-        toast.success(`Firmware v${val} deleted successfully!`);
+        toast.success(`Firmware v${val} deleted from ${consoleType.toUpperCase()}!`);
       } else {
         const err = await res.json();
         toast.error(err.error || "Failed to delete firmware");
@@ -946,14 +947,22 @@ export default function App() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col space-y-3">
                     <h3 className="font-mono text-xs uppercase tracking-wider text-indigo-600 font-bold flex items-center gap-1.5">
                       <Settings className="h-3.5 w-3.5" />
-                      Manage Firmware Presets ({firmwareValues.length})
+                      Manage Firmware Presets ({(firmwareValues.ps4?.length || 0) + (firmwareValues.ps5?.length || 0)})
                     </h3>
                     <p className="text-[10px] text-slate-500 leading-normal">
-                      Add custom firmware milestone versions or delete outdated ones. Changes apply to all selects immediately.
+                      Add custom firmware milestone versions or delete outdated ones. Changes apply to all select lists immediately.
                     </p>
 
                     {/* Add new firmware inline form */}
                     <form onSubmit={handleAddFirmware} className="flex gap-1.5">
+                      <select
+                        value={selectedAdminConsole}
+                        onChange={(e) => setSelectedAdminConsole(e.target.value as 'ps4' | 'ps5')}
+                        className="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none"
+                      >
+                        <option value="ps4">PS4</option>
+                        <option value="ps5">PS5</option>
+                      </select>
                       <input
                         type="text"
                         value={newFirmwareVal}
@@ -975,24 +984,59 @@ export default function App() {
                       </button>
                     </form>
 
-                    {/* Firmwares Tag List */}
-                    <div className="overflow-y-auto max-h-[140px] border border-slate-200/80 bg-white rounded-lg p-2.5 space-y-1.5 no-scrollbar">
-                      {firmwareValues.map((fw) => (
-                        <div key={fw} className="flex items-center justify-between text-xs font-mono bg-slate-50 border border-slate-100 rounded px-2 py-1 text-slate-700">
-                          <span className="font-semibold">v{fw}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFirmware(fw)}
-                            className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer"
-                            title={`Delete firmware v${fw}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                    {/* Side by side columns for PS4 and PS5 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                      {/* PS4 column */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 border-b pb-0.5 mb-1 flex justify-between">
+                          <span>PS4 Firmwares</span>
+                          <span className="text-slate-400">({firmwareValues.ps4?.length || 0})</span>
                         </div>
-                      ))}
-                      {firmwareValues.length === 0 && (
-                        <p className="text-[10px] text-slate-400 italic text-center py-2">No custom firmwares found.</p>
-                      )}
+                        <div className="overflow-y-auto max-h-[140px] border border-slate-200/80 bg-white rounded-lg p-2 space-y-1 no-scrollbar">
+                          {(firmwareValues.ps4 || []).map((fw) => (
+                            <div key={`ps4-${fw}`} className="flex items-center justify-between text-[11px] font-mono bg-slate-50 border border-slate-100 rounded px-2 py-0.5 text-slate-700">
+                              <span className="font-semibold">v{fw}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteFirmware('ps4', fw)}
+                                className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer"
+                                title={`Delete firmware v${fw} from PS4`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          {(!firmwareValues.ps4 || firmwareValues.ps4.length === 0) && (
+                            <p className="text-[9px] text-slate-400 italic text-center py-2">No firmwares found.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* PS5 column */}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 border-b pb-0.5 mb-1 flex justify-between">
+                          <span>PS5 Firmwares</span>
+                          <span className="text-slate-400">({firmwareValues.ps5?.length || 0})</span>
+                        </div>
+                        <div className="overflow-y-auto max-h-[140px] border border-slate-200/80 bg-white rounded-lg p-2 space-y-1 no-scrollbar">
+                          {(firmwareValues.ps5 || []).map((fw) => (
+                            <div key={`ps5-${fw}`} className="flex items-center justify-between text-[11px] font-mono bg-slate-50 border border-slate-100 rounded px-2 py-0.5 text-slate-700">
+                              <span className="font-semibold">v{fw}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteFirmware('ps5', fw)}
+                                className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer"
+                                title={`Delete firmware v${fw} from PS5`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          {(!firmwareValues.ps5 || firmwareValues.ps5.length === 0) && (
+                            <p className="text-[9px] text-slate-400 italic text-center py-2">No firmwares found.</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1778,18 +1822,61 @@ export default function App() {
                     {/* Dynamic typed Firmware input slider / text box combo */}
                     <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center space-x-4">
                       <div className="flex-1">
-                        <label className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-1">Decimal Firmware Version</label>
-                        <input
-                          type="text"
-                          value={firmwareInput}
-                          onChange={(e) => {
-                            // sanitize to only allow decimals
-                            const clean = e.target.value.replace(/[^0-9.]/g, '');
-                            setFirmwareInput(clean);
-                          }}
-                          className="w-full bg-transparent text-xl font-mono font-bold text-slate-900 placeholder-slate-300 border-none outline-none focus:ring-0"
-                          placeholder={consoleGen === 'ps4' ? "e.g. 9.00" : "e.g. 4.03"}
-                        />
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">
+                            {customFirmwareMode ? "Manual Firmware Version Input" : "Select Firmware Version"}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomFirmwareMode(!customFirmwareMode);
+                              // Reset to preset if switching back to dropdown
+                              if (customFirmwareMode) {
+                                setFirmwareInput(consoleGen === 'ps4' ? "9.00" : "4.03");
+                              }
+                            }}
+                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-mono underline font-bold cursor-pointer"
+                          >
+                            {customFirmwareMode ? "Choose from list" : "Type custom version"}
+                          </button>
+                        </div>
+                        
+                        {customFirmwareMode ? (
+                          <input
+                            type="text"
+                            value={firmwareInput}
+                            onChange={(e) => {
+                              // sanitize to only allow decimals
+                              const clean = e.target.value.replace(/[^0-9.]/g, '');
+                              setFirmwareInput(clean);
+                            }}
+                            className="w-full bg-transparent text-xl font-mono font-bold text-slate-900 placeholder-slate-300 border-none outline-none focus:ring-0"
+                            placeholder={consoleGen === 'ps4' ? "e.g. 9.00" : "e.g. 4.03"}
+                          />
+                        ) : (
+                          <select
+                            value={firmwareInput}
+                            onChange={(e) => setFirmwareInput(e.target.value)}
+                            className="w-full bg-transparent text-lg font-mono font-bold text-slate-900 border-none outline-none focus:ring-0 cursor-pointer pr-8"
+                          >
+                            {FIRMWARE_VALUES.map((fw) => {
+                              const fwNum = parseFloat(fw);
+                              let suffix = "";
+                              if (consoleGen === 'ps4') {
+                                if (fwNum <= 11.00) suffix = " - (Jailbreak Available)";
+                                else if (fwNum <= 11.50) suffix = " - (Webkit Only)";
+                              } else {
+                                if (fwNum <= 4.51) suffix = " - (Jailbreak Available)";
+                                else if (fwNum <= 7.61) suffix = " - (Alternative Exploit)";
+                              }
+                              return (
+                                <option key={fw} value={fw} className="font-mono text-slate-900 text-sm">
+                                  v{fw}{suffix}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
                       </div>
                       <div className="h-10 w-px bg-slate-200"></div>
                       <div className="text-right">
